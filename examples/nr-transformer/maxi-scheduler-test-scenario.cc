@@ -122,6 +122,7 @@ main(int argc, char* argv[])
     Time simTime = MilliSeconds(1000);
     Time udpAppStartTime = MilliSeconds(400);
     uint64_t randomStream = 1;
+    bool enableTransformer = true;
 
     // NR parameters
     uint16_t numerology = 0;
@@ -179,6 +180,9 @@ main(int argc, char* argv[])
     cmd.AddValue("randomStream",
                  "The random stream to be used for the simulation. Default is 1",
                  randomStream);
+    cmd.AddValue("enableTransformer",
+                 "If set to true, it enables the transformer for the scheduler. Default is false",
+                 enableTransformer);
     // cmd.AddValue("ueMobilityModel",
     //              "Mobility model for the UEs",
     //              ueMobilityModel);
@@ -359,6 +363,8 @@ main(int argc, char* argv[])
     scheduler << "ns3::NrMacScheduler" << subType << schedulerType;
     std::cout << "Scheduler: " << scheduler.str() << std::endl;
     nrHelper->SetSchedulerTypeId(TypeId::LookupByName(scheduler.str()));
+    nrHelper->SetSchedulerAttribute("ActiveDlTransformer", BooleanValue(enableTransformer));
+                                     
 
     // Set the scheduler type for the QoS LC scheduler if enabled
     if (enableQoSLcScheduler)

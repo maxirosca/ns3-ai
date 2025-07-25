@@ -4,6 +4,8 @@
 
 using namespace ns3;
 
+#define NUMS_UE 2
+
 struct FeaturesStruct
 {
     uint8_t qci; 
@@ -12,7 +14,6 @@ struct FeaturesStruct
     uint16_t delayBudget;
     uint16_t avgThroughput;
     uint16_t potThroughput;
-    uint16_t scheduleRound;
 };
 
 struct EnvStruct
@@ -22,7 +23,7 @@ struct EnvStruct
 
 struct ActStruct
 {
-    uint32_t weight;
+    double weight;
 };
 
 class NrTransformerInterface : public Object
@@ -33,4 +34,5 @@ class NrTransformerInterface : public Object
     static TypeId GetTypeId();
     
     void SetFeatures(std::vector<FeaturesStruct>& features);
+    std::vector<double> GetWeight();
 };

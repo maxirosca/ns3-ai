@@ -7,28 +7,33 @@
 
 namespace py = pybind11;
 
-PYBIND11_MAKE_OPAQUE(ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Cpp2PyMsgVector);
-PYBIND11_MAKE_OPAQUE(ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Py2CppMsgVector);
+PYBIND11_MAKE_OPAQUE(ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Cpp2PyMsgVector);
+PYBIND11_MAKE_OPAQUE(ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Py2CppMsgVector);
 
 PYBIND11_MODULE(nr_transformer_interface_py_vec, m)
 {
-    py::class_<EnvStruct>(m, "PyEnvStruct")
+    py::class_<FeaturesStruct>(m, "PyEnvStruct")
         .def(py::init<>())
-        .def_readwrite("features", &EnvStruct::features);
+        .def_readwrite("qci", &FeaturesStruct::qci)
+        .def_readwrite("priority", &FeaturesStruct::priority)
+        .def_readwrite("holDelay", &FeaturesStruct::holDelay)
+        .def_readwrite("delayBudget", &FeaturesStruct::delayBudget)
+        .def_readwrite("avgThroughput", &FeaturesStruct::avgThroughput)
+        .def_readwrite("potThroughput", &FeaturesStruct::potThroughput);
 
     py::class_<ActStruct>(m, "PyActStruct").def(py::init<>()).def_readwrite("weight", &ActStruct::weight);
 
-    py::class_<ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Cpp2PyMsgVector>(m, "PyEnvVector")
+    py::class_<ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Cpp2PyMsgVector>(m, "PyEnvVector")
         .def(
             "resize",
-            static_cast<void (ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Cpp2PyMsgVector::*)(
-                ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Cpp2PyMsgVector::size_type)>(
-                &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Cpp2PyMsgVector::resize))
-        .def("__len__", &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Cpp2PyMsgVector::size)
+            static_cast<void (ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Cpp2PyMsgVector::*)(
+                ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Cpp2PyMsgVector::size_type)>(
+                &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Cpp2PyMsgVector::resize))
+        .def("__len__", &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Cpp2PyMsgVector::size)
         .def(
             "__getitem__",
-            [](ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Cpp2PyMsgVector& vec,
-               uint32_t i) -> EnvStruct& {
+            [](ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Cpp2PyMsgVector& vec,
+               uint32_t i) -> FeaturesStruct& {
                 if (i >= vec.size())
                 {
                     std::cerr << "Invalid index " << i << " for vector, whose size is "
@@ -39,16 +44,16 @@ PYBIND11_MODULE(nr_transformer_interface_py_vec, m)
             },
             py::return_value_policy::reference);
 
-    py::class_<ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Py2CppMsgVector>(m, "PyActVector")
+    py::class_<ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Py2CppMsgVector>(m, "PyActVector")
         .def(
             "resize",
-            static_cast<void (ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Py2CppMsgVector::*)(
-                ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Py2CppMsgVector::size_type)>(
-                &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Py2CppMsgVector::resize))
-        .def("__len__", &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Py2CppMsgVector::size)
+            static_cast<void (ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Py2CppMsgVector::*)(
+                ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Py2CppMsgVector::size_type)>(
+                &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Py2CppMsgVector::resize))
+        .def("__len__", &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Py2CppMsgVector::size)
         .def(
             "__getitem__",
-            [](ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::Py2CppMsgVector& vec,
+            [](ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Py2CppMsgVector& vec,
                uint32_t i) -> ActStruct& {
                 if (i >= vec.size())
                 {
@@ -60,7 +65,7 @@ PYBIND11_MODULE(nr_transformer_interface_py_vec, m)
             },
             py::return_value_policy::reference);
 
-    py::class_<ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>>(m, "Ns3AiMsgInterfaceImpl")
+    py::class_<ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>>(m, "Ns3AiMsgInterfaceImpl")
         .def(py::init<bool,
                       bool,
                       bool,
@@ -69,15 +74,15 @@ PYBIND11_MODULE(nr_transformer_interface_py_vec, m)
                       const char*,
                       const char*,
                       const char*>())
-        .def("PyRecvBegin", &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::PyRecvBegin)
-        .def("PyRecvEnd", &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::PyRecvEnd)
-        .def("PySendBegin", &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::PySendBegin)
-        .def("PySendEnd", &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::PySendEnd)
-        .def("PyGetFinished", &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::PyGetFinished)
+        .def("PyRecvBegin", &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::PyRecvBegin)
+        .def("PyRecvEnd", &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::PyRecvEnd)
+        .def("PySendBegin", &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::PySendBegin)
+        .def("PySendEnd", &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::PySendEnd)
+        .def("PyGetFinished", &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::PyGetFinished)
         .def("GetCpp2PyVector",
-             &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::GetCpp2PyVector,
+             &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::GetCpp2PyVector,
              py::return_value_policy::reference)
         .def("GetPy2CppVector",
-             &ns3::Ns3AiMsgInterfaceImpl<EnvStruct, ActStruct>::GetPy2CppVector,
+             &ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::GetPy2CppVector,
              py::return_value_policy::reference);
 }
