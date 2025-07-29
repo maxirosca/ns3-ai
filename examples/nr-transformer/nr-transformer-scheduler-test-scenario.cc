@@ -36,7 +36,7 @@
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE("MaxiSchedulerTestScenario");
+NS_LOG_COMPONENT_DEFINE("NrTransformerSchedulerTestScenario");
 
 Vector PlaceUeRandomly(double minDist, double maxDist, uint64_t& streamIndex)
 {
