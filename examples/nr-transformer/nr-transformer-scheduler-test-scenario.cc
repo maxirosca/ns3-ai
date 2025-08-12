@@ -122,14 +122,14 @@ main(int argc, char* argv[])
     Time simTime = MilliSeconds(1000);
     Time udpAppStartTime = MilliSeconds(400);
     uint64_t randomStream = 1;
-    bool enableTransformer = true;
+    bool enableTransformer = false;
 
     // NR parameters
     uint16_t numerology = 0;
     double frequency = 4e9;
     double bandwidth = 20e6;
     double txPower = 43;
-    std::string schedulerType = "Qos";
+    std::string schedulerType = "RR";
     uint8_t enableOfdma = 0; // 0: no OFDMA, 1: OFDMA
     uint8_t enableQoSLcScheduler = 0;
     uint16_t mcsTable = 2;
@@ -265,11 +265,16 @@ main(int argc, char* argv[])
     gnbMobility.SetPositionAllocator(gnbPositionAlloc);
     gnbMobility.Install(gnbNodes);
 
+    std::vector<double> distanceToBS;
+    std::vector<Vector> uePositions;
     Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator>();
     for (uint32_t j = 0; j < ueNum; j++)
     {
         Vector pos = PlaceUeRandomly(scenarioParameters.m_minBsUtDistance, scenarioParameters.m_isd, randomStream);
         uePositionAlloc->Add(pos);
+        double distance = CalculateDistance(pos, Vector(0.0, 0.0, scenarioParameters.m_bsHeight));
+        distanceToBS.push_back(distance);
+        uePositions.push_back(pos);
     }
     MobilityHelper ueMobility;
     ueMobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
@@ -363,7 +368,7 @@ main(int argc, char* argv[])
     scheduler << "ns3::NrMacScheduler" << subType << schedulerType;
     std::cout << "Scheduler: " << scheduler.str() << std::endl;
     nrHelper->SetSchedulerTypeId(TypeId::LookupByName(scheduler.str()));
-    nrHelper->SetSchedulerAttribute("ActiveDlTransformer", BooleanValue(enableTransformer));
+    // nrHelper->SetSchedulerAttribute("ActiveDlTransformer", BooleanValue(enableTransformer));
                                      
 
     // Set the scheduler type for the QoS LC scheduler if enabled
@@ -651,17 +656,29 @@ main(int argc, char* argv[])
     double averageFlowThroughput = 0.0;
     double averageFlowDelay = 0.0;
 
-    std::ofstream outFile;
-    std::string filename = outputDir + "/" + simTag;
-    outFile.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
-    if (!outFile.is_open())
-    {
-        std::cerr << "Can't open file " << filename << std::endl;
-        return 1;
-    }
-
-    outFile.setf(std::ios_base::fixed);
-
+    // std::ofstream outFile;
+    std::ofstream csvFile;
+    // std::string filename = outputDir + "/" + simTag;
+    std::string csvFilename = outputDir + "/simulation_results.csv";
+    // outFile.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+    // outFile.open(filename.c_str(), std::ios_base::app);
+    csvFile.open(csvFilename.c_str(), std::ios_base::app);
+    // if (!outFile.is_open())
+    // {
+    //     std::cerr << "Can't open file " << filename << std::endl;
+    //     return 1;
+    // }
+    if (!csvFile.is_open()) {
+    std::cerr << "Can't open CSV file\n";
+    return 1;
+}
+    // outFile.setf(std::ios_base::fixed);
+    // outFile << "\n===== New Simulation: =========================\n";
+    if (csvFile.tellp() == 0)
+        {
+            csvFile << "FlowId,randomStream,numerology,scenario,scheduler,Throughput,Delay,Jitter\n";
+        }
+        
     double flowDuration = (simTime - udpAppStartTime).GetSeconds();
     for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin();
          i != stats.end();
@@ -678,47 +695,61 @@ main(int argc, char* argv[])
         {
             protoStream.str("UDP");
         }
-        outFile << "Flow " << i->first << " (" << t.sourceAddress << ":" << t.sourcePort << " -> "
-                << t.destinationAddress << ":" << t.destinationPort << ") proto "
-                << protoStream.str() << "\n";
-        outFile << "  Tx Packets: " << i->second.txPackets << "\n";
-        outFile << "  Tx Bytes:   " << i->second.txBytes << "\n";
-        outFile << "  TxOffered:  " << i->second.txBytes * 8.0 / flowDuration / 1000.0 / 1000.0
-                << " Mbps\n";
-        outFile << "  Rx Bytes:   " << i->second.rxBytes << "\n";
+        // outFile << "Flow " << i->first << " (" << t.sourceAddress << ":" << t.sourcePort << " -> "
+        //         << t.destinationAddress << ":" << t.destinationPort << ") proto "
+        //         << protoStream.str() << "\n";
+        // outFile << "Settings: randomStream= " << randomStream
+        //         << ", numerology= " << numerology
+        //         << ", scenario= " << scenario << "\n";
+        // outFile << "  Position UE 1, x: " << uePositions[0].x << ", y: " << uePositions[0].y << ", z: " << uePositions[0].z << ", Distance to BS: " << distanceToBS[0] << "\n";
+        // outFile << "  Position UE 2, x: " << uePositions[1].x << ", y: " << uePositions[1].y << ", z: " << uePositions[1].z << ", Distance to BS: " << distanceToBS[1] << "\n";
+        // outFile << "  Scheduler: " << scheduler.str() << "\n";
+        // outFile << "  Tx Packets: " << i->second.txPackets << "\n";
+        // outFile << "  Tx Bytes:   " << i->second.txBytes << "\n";
+        // outFile << "  TxOffered:  " << i->second.txBytes * 8.0 / flowDuration / 1000.0 / 1000.0
+        //         << " Mbps\n";
+        // outFile << "  Rx Bytes:   " << i->second.rxBytes << "\n";
+        csvFile << i->first << "," << randomStream << "," << numerology << "," << scenario << ","
+                << scheduler.str() << ",";
         if (i->second.rxPackets > 0)
         {
             // Measure the duration of the flow from receiver's perspective
             averageFlowThroughput += i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000;
             averageFlowDelay += 1000 * i->second.delaySum.GetSeconds() / i->second.rxPackets;
 
-            outFile << "  Throughput: " << i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000
-                    << " Mbps\n";
-            outFile << "  Mean delay:  "
-                    << 1000 * i->second.delaySum.GetSeconds() / i->second.rxPackets << " ms\n";
-            // outFile << "  Mean upt:  " << i->second.uptSum / i->second.rxPackets / 1000/1000 << "
-            // Mbps \n";
-            outFile << "  Mean jitter:  "
-                    << 1000 * i->second.jitterSum.GetSeconds() / i->second.rxPackets << " ms\n";
+        //     outFile << "  Throughput: " << i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000
+        //             << " Mbps\n";
+        //     outFile << "  Mean delay:  "
+        //             << 1000 * i->second.delaySum.GetSeconds() / i->second.rxPackets << " ms\n";
+        //     // outFile << "  Mean upt:  " << i->second.uptSum / i->second.rxPackets / 1000/1000 << "
+        //     // Mbps \n";
+        //     outFile << "  Mean jitter:  "
+        //             << 1000 * i->second.jitterSum.GetSeconds() / i->second.rxPackets << " ms\n";
+            csvFile << i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000 << ","
+                    << 1000 * i->second.delaySum.GetSeconds() / i->second.rxPackets << ","
+                    << 1000 * i->second.jitterSum.GetSeconds() / i->second.rxPackets << "\n";
         }
         else
         {
-            outFile << "  Throughput:  0 Mbps\n";
-            outFile << "  Mean delay:  0 ms\n";
-            outFile << "  Mean jitter: 0 ms\n";
+            // outFile << "  Throughput:  0 Mbps\n";
+            // outFile << "  Mean delay:  0 ms\n";
+            // outFile << "  Mean jitter: 0 ms\n";
+            csvFile << "0,0,0\n";
         }
-        outFile << "  Rx Packets: " << i->second.rxPackets << "\n";
+        // outFile << "  Rx Packets: " << i->second.rxPackets << "\n";
     }
 
     double meanFlowThroughput = averageFlowThroughput / stats.size();
     double meanFlowDelay = averageFlowDelay / stats.size();
 
-    outFile << "\n\n  Mean flow throughput: " << meanFlowThroughput << "\n";
-    outFile << "  Mean flow delay: " << meanFlowDelay << "\n";
+    // outFile << "\n\n  Mean flow throughput: " << meanFlowThroughput << " Mbps\n";
+    // outFile << "  Mean flow delay: " << meanFlowDelay << " ms\n";
 
-    outFile.close();
+    // outFile.close();
+    csvFile.close();
 
-    std::ifstream f(filename.c_str());
+    // std::ifstream f(filename.c_str());
+    std::ifstream f(csvFilename.c_str());
 
     if (f.is_open())
     {
