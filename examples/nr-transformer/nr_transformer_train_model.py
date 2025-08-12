@@ -11,7 +11,7 @@ device = torch.accelerator.current_accelerator().type if torch.accelerator.is_av
 print(f"Using {device} device")
 
 
-csv_path = '/home/maximilianrosca/ns-3-dev/dl_weights_log_sample.csv'
+csv_path = '/home/maximilianrosca/Masterarbeit/Simulation-files/training_data_zscore_softmax.csv'
 dataset = NrDataset(csv_path)
 
 train_idx, test_idx = train_test_split(range(len(dataset)), test_size=0.3, random_state=42)
@@ -42,42 +42,29 @@ def train(train_loader, model, loss_fn, optimizer):
     print(f"Average Training Loss: {total_loss / len(train_loader.dataset):.4f}")
 
 
-def test(test_loader, model, loss_fn, label_scaler):
+def test(test_loader, model, loss_fn):
     model.eval()
     val_loss = 0.0
-    all_preds = []
-    all_labels = []
     with torch.no_grad():
         for X, y in test_loader:
             X, y = X.to(device), y.to(device)  
             pred = model(X)
 
-            all_preds.append(pred.cpu())
-            all_labels.append(y.cpu())
             loss = loss_fn(pred, y)
             val_loss += loss.item() * X.size(0)
 
     avg_val_loss = val_loss / len(test_loader.dataset)
-
-    all_preds = torch.cat(all_preds).numpy()
-    all_labels = torch.cat(all_labels).numpy()
-    preds_org = label_scaler.inverse_transform(all_preds)
-    labels_org = label_scaler.inverse_transform(all_labels)
-
-    mae = np.mean(np.abs(preds_org - labels_org))
-    print(f"Test Loss (normalized): {avg_val_loss:.4f}")
-    print(f"MAE (original scale): {mae:.2f}")
-    return avg_val_loss
+    print(f"Test Loss: {avg_val_loss:.4f}")
 
 
 # Training loop
-num_epochs = 5
+num_epochs = 10
 for t in range(num_epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     train(train_loader, model, loss_fn, optimizer)
-    test(test_loader, model, loss_fn, dataset.get_scalers()[1])
+    test(test_loader, model, loss_fn)
     print("Done!")
 
 # Save the model
-torch.save(model.state_dict(), "nr_transformer_model.pth")
-print("Model saved to nr_transformer_model.pth")
+torch.save(model.state_dict(), "/home/maximilianrosca/Masterarbeit/Simulation-files/nr_transformer_model_zscore_softmax.pth")
+print("Model saved!")
