@@ -61,6 +61,7 @@ Vector PlaceUeRandomly(double minDist, double maxDist, uint64_t& streamIndex)
 }
 
 uint64_t randomStream = 1; // Random stream to be used for the simulation
+uint64_t simulationNr = 0; // Simulation number
 
 // enum TrafficType
 // {
@@ -111,7 +112,7 @@ main(int argc, char* argv[])
 {
     // Scenario parameters
     uint16_t gNbNum = 1;
-    uint16_t ueNum = 2;
+    uint16_t ueNum = 3;
     bool logging = false;
    
     // Traffic parameters
@@ -129,9 +130,9 @@ main(int argc, char* argv[])
     // NR parameters
     uint16_t numerology = 0;
     double frequency = 4e9;
-    double bandwidth = 10e6;
+    double bandwidth = 20e6;
     double txPower = 43;
-    std::string schedulerType = "RR";
+    std::string schedulerType = "Qos";
     uint8_t enableOfdma = 0; // 0: no OFDMA, 1: OFDMA
     uint8_t enableQoSLcScheduler = 0;
     uint16_t mcsTable = 2;
@@ -189,6 +190,9 @@ main(int argc, char* argv[])
     //              ueMobilityModel);
 
     cmd.Parse(argc, argv);
+    
+    // Simulation number
+    simulationNr = randomStream;
 
     /*
      * Check if the frequency is in the allowed range.
@@ -233,7 +237,8 @@ main(int argc, char* argv[])
     {
         scenarioParameters.m_bsHeight = 35;
         scenarioParameters.m_minBsUtDistance = 35;
-        scenarioParameters.m_isd = 1732;
+        // scenarioParameters.m_isd = 1732;
+        scenarioParameters.m_isd = 800;
     }
     else if (scenario == "UMa")
     {
@@ -328,19 +333,17 @@ main(int argc, char* argv[])
 
    /*
      * Create two different NodeContainer for the different traffic type.
-     * In flow1Container we will put the UEs that will receive low-latency traffic,
-     * while in flow2Container we will put the UEs that will receive the voice traffic.
+     * In nonGbrflowContainer we will put the UEs that will receive low-latency traffic,
+     * while in GbrflowContainer we will put the UEs that will receive the voice traffic.
      */
-    NodeContainer flow1Container;
-    NodeContainer flow2Container;
+    NodeContainer nonGbrflowContainer;
+    NodeContainer GbrflowContainer;
+    NodeContainer DcGbrflowContainer;
     
-    for (uint32_t j = 0; j < ueNodes.GetN(); ++j)
-    {
-        Ptr<Node> ue = ueNodes.Get(j);
-        j % 2 == 0 ? flow1Container.Add(ue) : flow2Container.Add(ue);
-    }
-    
-    
+    nonGbrflowContainer.Add(ueNodes.Get(0)); // first UE will receive non-GBR traffic
+    GbrflowContainer.Add(ueNodes.Get(1)); // second UE will receive GBR
+    DcGbrflowContainer.Add(ueNodes.Get(2)); // third UE will receive DC-GBR traffic
+   
     // NS_LOG_INFO("Creating " << gridScenario.GetUserTerminals().GetN() << " user terminals and "
     //                         << gridScenario.GetBaseStations().GetN() << " gNBs");
 
@@ -450,17 +453,20 @@ main(int argc, char* argv[])
     nrHelper->SetGnbDlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
     nrHelper->SetGnbUlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
 
-    uint32_t bwpIdflow1 = 0;
-    uint32_t bwpIdflow2 = 0;
+    uint32_t bwpIdnonGbr = 0;
+    uint32_t bwpIdGbr = 0;
+    uint32_t bwpIdDcGbr = 0;
 
     // gNb routing between Bearer and bandwidh part
     nrHelper->SetGnbBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB",
-                                                  UintegerValue(bwpIdflow1));
-    nrHelper->SetGnbBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdflow2));
+                                                  UintegerValue(bwpIdnonGbr));
+    nrHelper->SetGnbBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdGbr));
+    nrHelper->SetGnbBwpManagerAlgorithmAttribute("DGBR_VISUAL_CONTENT_89", UintegerValue(bwpIdDcGbr));
 
     // Ue routing between Bearer and bandwidth part
-    nrHelper->SetUeBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB", UintegerValue(bwpIdflow1));
-    nrHelper->SetUeBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdflow2));
+    nrHelper->SetUeBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB", UintegerValue(bwpIdnonGbr));
+    nrHelper->SetUeBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdGbr));
+    nrHelper->SetUeBwpManagerAlgorithmAttribute("DGBR_VISUAL_CONTENT_89", UintegerValue(bwpIdDcGbr));
 
     /*
      * We have configured the attributes we needed. Now, install and get the pointers
@@ -469,12 +475,15 @@ main(int argc, char* argv[])
 
     NetDeviceContainer gnbNetDev =
         nrHelper->InstallGnbDevice(gnbNodes, allBwps);
-    NetDeviceContainer flow1NetDev = nrHelper->InstallUeDevice(flow1Container, allBwps);
-    NetDeviceContainer flow2NetDev = nrHelper->InstallUeDevice(flow2Container, allBwps);
-    
-    NetDeviceContainer ueNetDevs(flow1NetDev);
-    ueNetDevs.Add(flow2NetDev);
+    NetDeviceContainer nonGbrflowNetDev = nrHelper->InstallUeDevice(nonGbrflowContainer, allBwps);
+    NetDeviceContainer gbrflowNetDev = nrHelper->InstallUeDevice(GbrflowContainer, allBwps);
+    NetDeviceContainer dcgbrflowNetDev = nrHelper->InstallUeDevice(DcGbrflowContainer, allBwps);
 
+    NetDeviceContainer ueNetDevs(nonGbrflowNetDev);
+    ueNetDevs.Add(gbrflowNetDev);
+    ueNetDevs.Add(dcgbrflowNetDev);
+
+   
     randomStream += nrHelper->AssignStreams(gnbNetDev, randomStream);
     randomStream += nrHelper->AssignStreams(ueNetDevs, randomStream);
 
@@ -518,8 +527,9 @@ main(int argc, char* argv[])
     remoteHostStaticRouting->AddNetworkRouteTo(Ipv4Address("7.0.0.0"), Ipv4Mask("255.0.0.0"), 1);
     internet.Install(ueNodes);
 
-    Ipv4InterfaceContainer ueflow1IpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(flow1NetDev));
-    Ipv4InterfaceContainer ueflow2IpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(flow2NetDev));
+    Ipv4InterfaceContainer uenonGbrIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(nonGbrflowNetDev));
+    Ipv4InterfaceContainer ueGbrIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(gbrflowNetDev));
+    Ipv4InterfaceContainer ueDcGbrIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(dcgbrflowNetDev));
     
     // attach UEs to the closest gNB
     nrHelper->AttachToClosestGnb(ueNetDevs, gnbNetDev);
@@ -528,95 +538,133 @@ main(int argc, char* argv[])
      * Traffic part. Install two kind of traffic: low-latency and voice, each
      * identified by a particular source port.
      */
-    uint16_t dlPortUeFlow1 = 1234;
-    uint16_t dlPortUeFlow2 = 1235;
+    uint16_t dlPortUenonGbr = 1234;
+    uint16_t dlPortUeGbr = 1235;
+    uint16_t dlPortUeDcGbr = 1236;
 
     ApplicationContainer serverApps;
 
     // The sink will always listen to the specified ports
-    UdpServerHelper dlPacketSinkUeFlow1(dlPortUeFlow1);
-    UdpServerHelper dlPacketSinkUeFlow2(dlPortUeFlow2);
+    UdpServerHelper dlPacketSinkUeNonGbr(dlPortUenonGbr);
+    UdpServerHelper dlPacketSinkUeGbr(dlPortUeGbr);
+    UdpServerHelper dlPacketSinkUeDcGbr(dlPortUeDcGbr);
 
     // The server, that is the application which is listening, is installed in the UE
-    serverApps.Add(dlPacketSinkUeFlow1.Install(flow1Container));
-    serverApps.Add(dlPacketSinkUeFlow2.Install(flow2Container));
+    serverApps.Add(dlPacketSinkUeNonGbr.Install(nonGbrflowContainer));
+    serverApps.Add(dlPacketSinkUeGbr.Install(GbrflowContainer));
+    serverApps.Add(dlPacketSinkUeDcGbr.Install(DcGbrflowContainer));
 
     /*
      * Configure attributes for the different generators, using user-provided
      * parameters for generating a CBR traffic
      *
-     * Flow1: Low-Latency configuration and object creation:
+     * Non-GBR flow: Low-Latency configuration and object creation:
      */
-    UdpClientHelper dlClientUeFlow1;
-    dlClientUeFlow1.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
-    dlClientUeFlow1.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
-    dlClientUeFlow1.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+    UdpClientHelper dlClientUenonGbr;
+    dlClientUenonGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    dlClientUenonGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    dlClientUenonGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
 
     // The bearer that will carry low latency traffic
-    NrEpsBearer flow1Bearer(NrEpsBearer::NGBR_LOW_LAT_EMBB);
+    NrEpsBearer nonGbrBearer(NrEpsBearer::NGBR_LOW_LAT_EMBB);
 
     // The filter for the low-latency traffic
-    Ptr<NrEpcTft> flow1Tft = Create<NrEpcTft>();
-    NrEpcTft::PacketFilter dlpfUeflow1;
-    dlpfUeflow1.localPortStart = dlPortUeFlow1;
-    dlpfUeflow1.localPortEnd = dlPortUeFlow1;
-    flow1Tft->Add(dlpfUeflow1);
+    Ptr<NrEpcTft> nonGbrTft = Create<NrEpcTft>();
+    NrEpcTft::PacketFilter dlpfUenonGbr;
+    dlpfUenonGbr.localPortStart = dlPortUenonGbr;
+    dlpfUenonGbr.localPortEnd = dlPortUenonGbr;
+    nonGbrTft->Add(dlpfUenonGbr);
 
      /*
-     * Flow2: Voice configuration and object creation:
+     * GBR flow: Voice configuration and object creation:
      */
-    UdpClientHelper dlClientUeFlow2;
-    dlClientUeFlow2.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
-    dlClientUeFlow2.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
-    dlClientUeFlow2.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+    UdpClientHelper dlClientUeGbr;
+    dlClientUeGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    dlClientUeGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    dlClientUeGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
 
     // The bearer that will carry voice traffic
-    NrEpsBearer flow2Bearer(NrEpsBearer::GBR_CONV_VOICE);
+    NrEpsBearer gbrBearer(NrEpsBearer::GBR_CONV_VOICE);
 
     // The filter for the voice traffic
-    Ptr<NrEpcTft> flow2Tft = Create<NrEpcTft>();
-    NrEpcTft::PacketFilter dlpfUeflow2;
-    dlpfUeflow2.localPortStart = dlPortUeFlow2;
-    dlpfUeflow2.localPortEnd = dlPortUeFlow2;
-    flow2Tft->Add(dlpfUeflow2);
+    Ptr<NrEpcTft> gbrTft = Create<NrEpcTft>();
+    NrEpcTft::PacketFilter dlpfUeGbr;
+    dlpfUeGbr.localPortStart = dlPortUeGbr;
+    dlpfUeGbr.localPortEnd = dlPortUeGbr;
+    gbrTft->Add(dlpfUeGbr);
+    
+    /*
+     * DC-GBR flow: Video configuration and object creation:
+     */
+    UdpClientHelper dlClientUeDcGbr;
+    dlClientUeDcGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    dlClientUeDcGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    dlClientUeDcGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+
+    // The bearer that will carry Visual Content for cloud/edge/split rendering
+    NrEpsBearer dcgbrBearer(NrEpsBearer::DGBR_VISUAL_CONTENT_89);
+
+    // The filter for the Visual Content for cloud/edge/split rendering traffic
+    Ptr<NrEpcTft> dcgbrTft = Create<NrEpcTft>();
+    NrEpcTft::PacketFilter dlpfUeDcGbr;
+    dlpfUeDcGbr.localPortStart = dlPortUeDcGbr;
+    dlpfUeDcGbr.localPortEnd = dlPortUeDcGbr;
+    dcgbrTft->Add(dlpfUeDcGbr);
 
     /*
      * Let's install the applications!
      */
     ApplicationContainer clientApps;
-    
-    for (uint32_t i = 0; i < flow1Container.GetN(); ++i)
+
+    for (uint32_t i = 0; i < nonGbrflowContainer.GetN(); ++i)
     {
-        Ptr<NetDevice> ueDevice = flow1NetDev.Get(i);
-        Address ueAddress = ueflow1IpIface.GetAddress(i);
+        Ptr<NetDevice> ueDevice = nonGbrflowNetDev.Get(i);
+        Address ueAddress = uenonGbrIpIface.GetAddress(i);
 
         // The client, who is transmitting, is installed in the remote host,
         // with destination address set to the address of the UE
-        dlClientUeFlow1.SetAttribute(
+        dlClientUenonGbr.SetAttribute(
             "Remote",
-            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUeFlow1)));
+            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUenonGbr)));
         // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
-        clientApps.Add(dlClientUeFlow1.Install(remoteHost));
+        clientApps.Add(dlClientUenonGbr.Install(remoteHost));
 
         // Activate a dedicated bearer for the traffic type
-        nrHelper->ActivateDedicatedEpsBearer(ueDevice, flow1Bearer, flow1Tft);
+        nrHelper->ActivateDedicatedEpsBearer(ueDevice, nonGbrBearer, nonGbrTft);
     }
-    
-    for (uint32_t i = 0; i < flow2Container.GetN(); ++i)
+
+    for (uint32_t i = 0; i < GbrflowContainer.GetN(); ++i)
     {
-        Ptr<NetDevice> ueDevice = flow2NetDev.Get(i);
-        Address ueAddress = ueflow2IpIface.GetAddress(i);
+        Ptr<NetDevice> ueDevice = gbrflowNetDev.Get(i);
+        Address ueAddress = ueGbrIpIface.GetAddress(i);
 
         // The client, who is transmitting, is installed in the remote host,
         // with destination address set to the address of the UE
-        dlClientUeFlow2.SetAttribute(
+        dlClientUeGbr.SetAttribute(
             "Remote",
-            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUeFlow2)));
+            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUeGbr)));
         // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
-        clientApps.Add(dlClientUeFlow2.Install(remoteHost));
+        clientApps.Add(dlClientUeGbr.Install(remoteHost));
 
         // Activate a dedicated bearer for the traffic type
-        nrHelper->ActivateDedicatedEpsBearer(ueDevice, flow2Bearer, flow2Tft);
+        nrHelper->ActivateDedicatedEpsBearer(ueDevice, gbrBearer, gbrTft);
+    }
+
+    for (uint32_t i = 0; i < DcGbrflowContainer.GetN(); ++i)
+    {
+        Ptr<NetDevice> ueDevice = dcgbrflowNetDev.Get(i);
+        Address ueAddress = ueDcGbrIpIface.GetAddress(i);
+
+        // The client, who is transmitting, is installed in the remote host,
+        // with destination address set to the address of the UE
+        dlClientUeDcGbr.SetAttribute(
+            "Remote",
+            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUeDcGbr)));
+        // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
+        clientApps.Add(dlClientUeDcGbr.Install(remoteHost));
+
+        // Activate a dedicated bearer for the traffic type
+        nrHelper->ActivateDedicatedEpsBearer(ueDevice, dcgbrBearer, dcgbrTft);
     }
 
     // start UDP server and client apps
@@ -661,7 +709,7 @@ main(int argc, char* argv[])
     // std::ofstream csvFile;
     std::string filename = outputDir + "/" + simTag;
     // std::string csvFilename = outputDir + "/simulation_results.csv";
-    outFile.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+    outFile.open(filename.c_str(), std::ofstream::out | std::ofstream::app);
     // csvFile.open(csvFilename.c_str(), std::ios_base::app);
     if (!outFile.is_open())
     {
@@ -695,14 +743,32 @@ main(int argc, char* argv[])
         {
             protoStream.str("UDP");
         }
+
+        std::string flowType = "Unknown";
+            if (t.destinationPort == dlPortUenonGbr)
+            {
+                flowType = "Non-GBR (Low-Latency)";
+            }
+            else if (t.destinationPort == dlPortUeGbr)
+            {
+                flowType = "GBR (Voice)";
+            }
+            else if (t.destinationPort == dlPortUeDcGbr)
+            {
+                flowType = "DC-GBR (Video)";
+            }
+
         outFile << "Flow " << i->first << " (" << t.sourceAddress << ":" << t.sourcePort << " -> "
                 << t.destinationAddress << ":" << t.destinationPort << ") proto "
                 << protoStream.str() << "\n";
-        outFile << "Settings: randomStream= " << randomStream
+        outFile << "Settings: Simulation Nr= " << simulationNr
                 << ", numerology= " << numerology
-                << ", scenario= " << scenario << "\n";
+                << ", bandwidth= " << bandwidth
+                << ", scenario= " << scenario
+                << ",  Flow type: " << flowType << "\n";
         outFile << "  Position UE 1, x: " << uePositions[0].x << ", y: " << uePositions[0].y << ", z: " << uePositions[0].z << ", Distance to BS: " << distanceToBS[0] << "\n";
         outFile << "  Position UE 2, x: " << uePositions[1].x << ", y: " << uePositions[1].y << ", z: " << uePositions[1].z << ", Distance to BS: " << distanceToBS[1] << "\n";
+        outFile << "  Position UE 3, x: " << uePositions[2].x << ", y: " << uePositions[2].y << ", z: " << uePositions[2].z << ", Distance to BS: " << distanceToBS[2] << "\n";
         outFile << "  Scheduler: " << scheduler.str() << "\n";
         outFile << "  Tx Packets: " << i->second.txPackets << "\n";
         outFile << "  Tx Bytes:   " << i->second.txBytes << "\n";
