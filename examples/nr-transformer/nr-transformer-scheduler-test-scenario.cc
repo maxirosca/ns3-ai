@@ -112,7 +112,7 @@ main(int argc, char* argv[])
 {
     // Scenario parameters
     uint16_t gNbNum = 1;
-    uint16_t ueNum = 3;
+    uint16_t ueNum = 2;
     bool logging = false;
    
     // Traffic parameters
@@ -244,7 +244,8 @@ main(int argc, char* argv[])
     {
         scenarioParameters.m_bsHeight = 25;
         scenarioParameters.m_minBsUtDistance = 35;
-        scenarioParameters.m_isd = 500;
+        // scenarioParameters.m_isd = 500;
+        scenarioParameters.m_isd = 300;
     }
     else if (scenario == "UMi")
     {
@@ -336,14 +337,14 @@ main(int argc, char* argv[])
      * In nonGbrflowContainer we will put the UEs that will receive low-latency traffic,
      * while in GbrflowContainer we will put the UEs that will receive the voice traffic.
      */
-    NodeContainer nonGbrflowContainer;
-    NodeContainer GbrflowContainer;
-    NodeContainer DcGbrflowContainer;
-    
-    nonGbrflowContainer.Add(ueNodes.Get(0)); // first UE will receive non-GBR traffic
-    GbrflowContainer.Add(ueNodes.Get(1)); // second UE will receive GBR
-    DcGbrflowContainer.Add(ueNodes.Get(2)); // third UE will receive DC-GBR traffic
-   
+    NodeContainer ue1flowContainer;
+    NodeContainer ue2flowContainer;
+    // NodeContainer ue3flowContainer;
+
+    ue1flowContainer.Add(ueNodes.Get(0)); // first UE will also receive GBR traffic
+    ue2flowContainer.Add(ueNodes.Get(1)); // second UE will receive GBR
+    // ue3flowContainer.Add(ueNodes.Get(2)); // third UE will receive DC-GBR traffic
+
     // NS_LOG_INFO("Creating " << gridScenario.GetUserTerminals().GetN() << " user terminals and "
     //                         << gridScenario.GetBaseStations().GetN() << " gNBs");
 
@@ -453,20 +454,28 @@ main(int argc, char* argv[])
     nrHelper->SetGnbDlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
     nrHelper->SetGnbUlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
 
-    uint32_t bwpIdnonGbr = 0;
-    uint32_t bwpIdGbr = 0;
-    uint32_t bwpIdDcGbr = 0;
+    uint32_t bwpIdUe1nonGbr = 0;
+    // uint32_t bwpIdUe1Gbr = 0;
+    uint32_t bwpIdUe2Gbr = 0;
+    // uint32_t bwpIdUe3nonGbr = 0;
+    // uint32_t bwpIdUe3Gbr = 0;
+    // uint32_t bwpIdUe3DcGbr = 0;
 
     // gNb routing between Bearer and bandwidh part
-    nrHelper->SetGnbBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB",
-                                                  UintegerValue(bwpIdnonGbr));
-    nrHelper->SetGnbBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdGbr));
-    nrHelper->SetGnbBwpManagerAlgorithmAttribute("DGBR_VISUAL_CONTENT_89", UintegerValue(bwpIdDcGbr));
+    nrHelper->SetGnbBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB", UintegerValue(bwpIdUe1nonGbr));
+    // nrHelper->SetGnbBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdUe1Gbr));
+    nrHelper->SetGnbBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdUe2Gbr));
+    // nrHelper->SetGnbBwpManagerAlgorithmAttribute("DGBR_VISUAL_CONTENT_89", UintegerValue(bwpIdUe3DcGbr));
+    // nrHelper->SetGnbBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB", UintegerValue(bwpIdUe3nonGbr));
+    // nrHelper->SetGnbBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdUe3Gbr));
 
     // Ue routing between Bearer and bandwidth part
-    nrHelper->SetUeBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB", UintegerValue(bwpIdnonGbr));
-    nrHelper->SetUeBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdGbr));
-    nrHelper->SetUeBwpManagerAlgorithmAttribute("DGBR_VISUAL_CONTENT_89", UintegerValue(bwpIdDcGbr));
+    nrHelper->SetUeBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB", UintegerValue(bwpIdUe1nonGbr));
+    // nrHelper->SetUeBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdUe1Gbr));
+    nrHelper->SetUeBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdUe2Gbr));
+    // nrHelper->SetUeBwpManagerAlgorithmAttribute("DGBR_VISUAL_CONTENT_89", UintegerValue(bwpIdUe3DcGbr));
+    // nrHelper->SetUeBwpManagerAlgorithmAttribute("NGBR_LOW_LAT_EMBB", UintegerValue(bwpIdUe3nonGbr));
+    // nrHelper->SetUeBwpManagerAlgorithmAttribute("GBR_CONV_VOICE", UintegerValue(bwpIdUe3Gbr));
 
     /*
      * We have configured the attributes we needed. Now, install and get the pointers
@@ -475,15 +484,14 @@ main(int argc, char* argv[])
 
     NetDeviceContainer gnbNetDev =
         nrHelper->InstallGnbDevice(gnbNodes, allBwps);
-    NetDeviceContainer nonGbrflowNetDev = nrHelper->InstallUeDevice(nonGbrflowContainer, allBwps);
-    NetDeviceContainer gbrflowNetDev = nrHelper->InstallUeDevice(GbrflowContainer, allBwps);
-    NetDeviceContainer dcgbrflowNetDev = nrHelper->InstallUeDevice(DcGbrflowContainer, allBwps);
+    NetDeviceContainer ue1flowNetDev = nrHelper->InstallUeDevice(ue1flowContainer, allBwps);
+    NetDeviceContainer ue2flowNetDev = nrHelper->InstallUeDevice(ue2flowContainer, allBwps);
+    // NetDeviceContainer ue3flowNetDev = nrHelper->InstallUeDevice(ue3flowContainer, allBwps);
 
-    NetDeviceContainer ueNetDevs(nonGbrflowNetDev);
-    ueNetDevs.Add(gbrflowNetDev);
-    ueNetDevs.Add(dcgbrflowNetDev);
+    NetDeviceContainer ueNetDevs(ue1flowNetDev);
+    ueNetDevs.Add(ue2flowNetDev);
+    // ueNetDevs.Add(ue3flowNetDev);
 
-   
     randomStream += nrHelper->AssignStreams(gnbNetDev, randomStream);
     randomStream += nrHelper->AssignStreams(ueNetDevs, randomStream);
 
@@ -527,10 +535,10 @@ main(int argc, char* argv[])
     remoteHostStaticRouting->AddNetworkRouteTo(Ipv4Address("7.0.0.0"), Ipv4Mask("255.0.0.0"), 1);
     internet.Install(ueNodes);
 
-    Ipv4InterfaceContainer uenonGbrIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(nonGbrflowNetDev));
-    Ipv4InterfaceContainer ueGbrIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(gbrflowNetDev));
-    Ipv4InterfaceContainer ueDcGbrIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(dcgbrflowNetDev));
-    
+    Ipv4InterfaceContainer ue1FlowIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(ue1flowNetDev));
+    Ipv4InterfaceContainer ue2FlowIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(ue2flowNetDev));
+    // Ipv4InterfaceContainer ue3FlowIpIface = nrEpcHelper->AssignUeIpv4Address(NetDeviceContainer(ue3flowNetDev));
+
     // attach UEs to the closest gNB
     nrHelper->AttachToClosestGnb(ueNetDevs, gnbNetDev);
     
@@ -538,21 +546,30 @@ main(int argc, char* argv[])
      * Traffic part. Install two kind of traffic: low-latency and voice, each
      * identified by a particular source port.
      */
-    uint16_t dlPortUenonGbr = 1234;
-    uint16_t dlPortUeGbr = 1235;
-    uint16_t dlPortUeDcGbr = 1236;
+    uint16_t dlPortUe1nonGbr = 1234;
+    // uint16_t dlPortUe1Gbr = 1235;
+    uint16_t dlPortUe2Gbr = 1236;
+    // uint16_t dlPortUe3DcGbr = 1237;
+    // uint16_t dlPortUe3nonGbr = 1238;
+    // uint16_t dlPortUe3Gbr = 1239;
 
     ApplicationContainer serverApps;
 
     // The sink will always listen to the specified ports
-    UdpServerHelper dlPacketSinkUeNonGbr(dlPortUenonGbr);
-    UdpServerHelper dlPacketSinkUeGbr(dlPortUeGbr);
-    UdpServerHelper dlPacketSinkUeDcGbr(dlPortUeDcGbr);
+    UdpServerHelper dlPacketSinkUe1NonGbr(dlPortUe1nonGbr);
+    // UdpServerHelper dlPacketSinkUe1Gbr(dlPortUe1Gbr);
+    UdpServerHelper dlPacketSinkUe2Gbr(dlPortUe2Gbr);
+    // UdpServerHelper dlPacketSinkUe3DcGbr(dlPortUe3DcGbr);
+    // UdpServerHelper dlPacketSinkUe3nonGbr(dlPortUe3nonGbr);
+    // UdpServerHelper dlPacketSinkUe3Gbr(dlPortUe3Gbr);
 
     // The server, that is the application which is listening, is installed in the UE
-    serverApps.Add(dlPacketSinkUeNonGbr.Install(nonGbrflowContainer));
-    serverApps.Add(dlPacketSinkUeGbr.Install(GbrflowContainer));
-    serverApps.Add(dlPacketSinkUeDcGbr.Install(DcGbrflowContainer));
+    serverApps.Add(dlPacketSinkUe1NonGbr.Install(ue1flowContainer));
+    // serverApps.Add(dlPacketSinkUe1Gbr.Install(ue1flowContainer));
+    serverApps.Add(dlPacketSinkUe2Gbr.Install(ue2flowContainer));
+    // serverApps.Add(dlPacketSinkUe3DcGbr.Install(ue3flowContainer));
+    // serverApps.Add(dlPacketSinkUe3nonGbr.Install(ue3flowContainer));
+    // serverApps.Add(dlPacketSinkUe3Gbr.Install(ue3flowContainer));
 
     /*
      * Configure attributes for the different generators, using user-provided
@@ -560,112 +577,220 @@ main(int argc, char* argv[])
      *
      * Non-GBR flow: Low-Latency configuration and object creation:
      */
-    UdpClientHelper dlClientUenonGbr;
-    dlClientUenonGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
-    dlClientUenonGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
-    dlClientUenonGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
-
+    UdpClientHelper dlClientUe1nonGbr;
+    dlClientUe1nonGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    dlClientUe1nonGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    dlClientUe1nonGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+        
     // The bearer that will carry low latency traffic
-    NrEpsBearer nonGbrBearer(NrEpsBearer::NGBR_LOW_LAT_EMBB);
+    NrEpsBearer ue1nonGbrBearer(NrEpsBearer::NGBR_LOW_LAT_EMBB);
 
     // The filter for the low-latency traffic
-    Ptr<NrEpcTft> nonGbrTft = Create<NrEpcTft>();
-    NrEpcTft::PacketFilter dlpfUenonGbr;
-    dlpfUenonGbr.localPortStart = dlPortUenonGbr;
-    dlpfUenonGbr.localPortEnd = dlPortUenonGbr;
-    nonGbrTft->Add(dlpfUenonGbr);
+    Ptr<NrEpcTft> ue1nonGbrTft = Create<NrEpcTft>();
+    NrEpcTft::PacketFilter dlpfUe1nonGbr;
+    dlpfUe1nonGbr.localPortStart = dlPortUe1nonGbr;
+    dlpfUe1nonGbr.localPortEnd = dlPortUe1nonGbr;
+    ue1nonGbrTft->Add(dlpfUe1nonGbr);
 
      /*
      * GBR flow: Voice configuration and object creation:
      */
-    UdpClientHelper dlClientUeGbr;
-    dlClientUeGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
-    dlClientUeGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
-    dlClientUeGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+    // UdpClientHelper dlClientUe1Gbr;
+    // dlClientUe1Gbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    // dlClientUe1Gbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    // dlClientUe1Gbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
 
     // The bearer that will carry voice traffic
-    NrEpsBearer gbrBearer(NrEpsBearer::GBR_CONV_VOICE);
+    // NrEpsBearer ue1gbrBearer(NrEpsBearer::GBR_CONV_VOICE);
 
     // The filter for the voice traffic
-    Ptr<NrEpcTft> gbrTft = Create<NrEpcTft>();
-    NrEpcTft::PacketFilter dlpfUeGbr;
-    dlpfUeGbr.localPortStart = dlPortUeGbr;
-    dlpfUeGbr.localPortEnd = dlPortUeGbr;
-    gbrTft->Add(dlpfUeGbr);
+    // Ptr<NrEpcTft> ue1gbrTft = Create<NrEpcTft>();
+    // NrEpcTft::PacketFilter dlpfUe1gbr;
+    // dlpfUe1gbr.localPortStart = dlPortUe1Gbr;
+    // dlpfUe1gbr.localPortEnd = dlPortUe1Gbr;
+    // ue1gbrTft->Add(dlpfUe1gbr);
+
+    /*
+     * GBR flow: Voice configuration and object creation:
+     */
+    UdpClientHelper dlClientUe2Gbr;
+    dlClientUe2Gbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    dlClientUe2Gbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    dlClientUe2Gbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+
+    // The bearer that will carry voice traffic
+    NrEpsBearer ue2gbrBearer(NrEpsBearer::GBR_CONV_VOICE);
+
+    // The filter for the voice traffic
+    Ptr<NrEpcTft> ue2gbrTft = Create<NrEpcTft>();
+    NrEpcTft::PacketFilter dlpfUe2gbr;
+    dlpfUe2gbr.localPortStart = dlPortUe2Gbr;
+    dlpfUe2gbr.localPortEnd = dlPortUe2Gbr;
+    ue2gbrTft->Add(dlpfUe2gbr); 
     
     /*
      * DC-GBR flow: Video configuration and object creation:
      */
-    UdpClientHelper dlClientUeDcGbr;
-    dlClientUeDcGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
-    dlClientUeDcGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
-    dlClientUeDcGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+    // UdpClientHelper dlClientUe3DcGbr;
+    // dlClientUe3DcGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    // dlClientUe3DcGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    // dlClientUe3DcGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+
+    // GFBR for DC-GBR flow of UE3
+    // NrGbrQosInformation qosUe3flowdcGbr;
+    // qosUe3flowdcGbr.gbrDl = 5e6;
 
     // The bearer that will carry Visual Content for cloud/edge/split rendering
-    NrEpsBearer dcgbrBearer(NrEpsBearer::DGBR_VISUAL_CONTENT_89);
+    // NrEpsBearer ue3dcgbrBearer(NrEpsBearer::DGBR_VISUAL_CONTENT_89, qosUe3flowdcGbr);
 
     // The filter for the Visual Content for cloud/edge/split rendering traffic
-    Ptr<NrEpcTft> dcgbrTft = Create<NrEpcTft>();
-    NrEpcTft::PacketFilter dlpfUeDcGbr;
-    dlpfUeDcGbr.localPortStart = dlPortUeDcGbr;
-    dlpfUeDcGbr.localPortEnd = dlPortUeDcGbr;
-    dcgbrTft->Add(dlpfUeDcGbr);
+    // Ptr<NrEpcTft> ue3dcgbrTft = Create<NrEpcTft>();
+    // NrEpcTft::PacketFilter dlpfUe3DcGbr;
+    // dlpfUe3DcGbr.localPortStart = dlPortUe3DcGbr;
+    // dlpfUe3DcGbr.localPortEnd = dlPortUe3DcGbr;
+    // ue3dcgbrTft->Add(dlpfUe3DcGbr);
+
+    /*
+    * Non-GBR flow: Low-Latency configuration and object creation:
+    */
+    // UdpClientHelper dlClientUe3nonGbr;
+    // dlClientUe3nonGbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    // dlClientUe3nonGbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    // dlClientUe3nonGbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+
+    // The bearer that will carry low latency traffic
+    // NrEpsBearer ue3nonGbrBearer(NrEpsBearer::NGBR_LOW_LAT_EMBB);
+
+    // The filter for the low-latency traffic
+    // Ptr<NrEpcTft> ue3nonGbrTft = Create<NrEpcTft>();
+    // NrEpcTft::PacketFilter dlpfUe3nonGbr;
+    // dlpfUe3nonGbr.localPortStart = dlPortUe3nonGbr;
+    // dlpfUe3nonGbr.localPortEnd = dlPortUe3nonGbr;
+    // ue3nonGbrTft->Add(dlpfUe3nonGbr);
+
+    /*
+     * GBR flow: Voice configuration and object creation:
+     */
+    // UdpClientHelper dlClientUe3Gbr;
+    // dlClientUe3Gbr.SetAttribute("MaxPackets", UintegerValue(0xFFFFFFFF));
+    // dlClientUe3Gbr.SetAttribute("PacketSize", UintegerValue(udpPacketSize));
+    // dlClientUe3Gbr.SetAttribute("Interval", TimeValue(Seconds(1.0 / lambda)));
+
+    // The bearer that will carry voice traffic
+    // NrEpsBearer ue3gbrBearer(NrEpsBearer::GBR_CONV_VOICE);
+    // The filter for the voice traffic
+    // Ptr<NrEpcTft> ue3gbrTft = Create<NrEpcTft>();
+    // NrEpcTft::PacketFilter dlpfUe3gbr;
+    // dlpfUe3gbr.localPortStart = dlPortUe3Gbr;
+    // dlpfUe3gbr.localPortEnd = dlPortUe3Gbr;
+    // ue3gbrTft->Add(dlpfUe3gbr);
 
     /*
      * Let's install the applications!
      */
     ApplicationContainer clientApps;
 
-    for (uint32_t i = 0; i < nonGbrflowContainer.GetN(); ++i)
+    for (uint32_t i = 0; i < ue1flowContainer.GetN(); ++i)
     {
-        Ptr<NetDevice> ueDevice = nonGbrflowNetDev.Get(i);
-        Address ueAddress = uenonGbrIpIface.GetAddress(i);
+        Ptr<NetDevice> ueDevice = ue1flowNetDev.Get(i);
+        Address ueAddress = ue1FlowIpIface.GetAddress(i);
 
         // The client, who is transmitting, is installed in the remote host,
         // with destination address set to the address of the UE
-        dlClientUenonGbr.SetAttribute(
+        dlClientUe1nonGbr.SetAttribute(
             "Remote",
-            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUenonGbr)));
+            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUe1nonGbr)));
         // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
-        clientApps.Add(dlClientUenonGbr.Install(remoteHost));
+        clientApps.Add(dlClientUe1nonGbr.Install(remoteHost));
 
         // Activate a dedicated bearer for the traffic type
-        nrHelper->ActivateDedicatedEpsBearer(ueDevice, nonGbrBearer, nonGbrTft);
+        nrHelper->ActivateDedicatedEpsBearer(ueDevice, ue1nonGbrBearer, ue1nonGbrTft);
     }
 
-    for (uint32_t i = 0; i < GbrflowContainer.GetN(); ++i)
+    // for (uint32_t i = 0; i < ue1flowContainer.GetN(); ++i)
+    // {
+    //     Ptr<NetDevice> ueDevice = ue1flowNetDev.Get(i);
+    //     Address ueAddress = ue1FlowIpIface.GetAddress(i);
+
+    //     // The client, who is transmitting, is installed in the remote host,
+    //     // with destination address set to the address of the UE
+    //     dlClientUe1Gbr.SetAttribute(
+    //         "Remote",
+    //         AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUe1Gbr)));
+    //     // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
+    //     clientApps.Add(dlClientUe1Gbr.Install(remoteHost));
+
+    //     // Activate a dedicated bearer for the traffic type
+    //     nrHelper->ActivateDedicatedEpsBearer(ueDevice, ue1gbrBearer, ue1gbrTft);
+    // }
+
+    for (uint32_t i = 0; i < ue2flowContainer.GetN(); ++i)
     {
-        Ptr<NetDevice> ueDevice = gbrflowNetDev.Get(i);
-        Address ueAddress = ueGbrIpIface.GetAddress(i);
+        Ptr<NetDevice> ueDevice = ue2flowNetDev.Get(i);
+        Address ueAddress = ue2FlowIpIface.GetAddress(i);
 
         // The client, who is transmitting, is installed in the remote host,
         // with destination address set to the address of the UE
-        dlClientUeGbr.SetAttribute(
+        dlClientUe2Gbr.SetAttribute(
             "Remote",
-            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUeGbr)));
+            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUe2Gbr)));
         // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
-        clientApps.Add(dlClientUeGbr.Install(remoteHost));
+        clientApps.Add(dlClientUe2Gbr.Install(remoteHost));
 
         // Activate a dedicated bearer for the traffic type
-        nrHelper->ActivateDedicatedEpsBearer(ueDevice, gbrBearer, gbrTft);
+        nrHelper->ActivateDedicatedEpsBearer(ueDevice, ue2gbrBearer, ue2gbrTft);
     }
 
-    for (uint32_t i = 0; i < DcGbrflowContainer.GetN(); ++i)
-    {
-        Ptr<NetDevice> ueDevice = dcgbrflowNetDev.Get(i);
-        Address ueAddress = ueDcGbrIpIface.GetAddress(i);
+    // for (uint32_t i = 0; i < ue3flowContainer.GetN(); ++i)
+    // {
+    //     Ptr<NetDevice> ueDevice = ue3flowNetDev.Get(i);
+    //     Address ueAddress = ue3FlowIpIface.GetAddress(i);
 
-        // The client, who is transmitting, is installed in the remote host,
-        // with destination address set to the address of the UE
-        dlClientUeDcGbr.SetAttribute(
-            "Remote",
-            AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUeDcGbr)));
-        // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
-        clientApps.Add(dlClientUeDcGbr.Install(remoteHost));
+    //     // The client, who is transmitting, is installed in the remote host,
+    //     // with destination address set to the address of the UE
+    //     dlClientUe3DcGbr.SetAttribute(
+    //         "Remote",
+    //         AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUe3DcGbr)));
+    //     // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
+    //     clientApps.Add(dlClientUe3DcGbr.Install(remoteHost));
 
-        // Activate a dedicated bearer for the traffic type
-        nrHelper->ActivateDedicatedEpsBearer(ueDevice, dcgbrBearer, dcgbrTft);
-    }
+    //     // Activate a dedicated bearer for the traffic type
+    //     nrHelper->ActivateDedicatedEpsBearer(ueDevice, ue3dcgbrBearer, ue3dcgbrTft);
+    // }
+
+    // for (uint32_t i = 0; i < ue3flowContainer.GetN(); ++i)
+    // {
+    //     Ptr<NetDevice> ueDevice = ue3flowNetDev.Get(i);
+    //     Address ueAddress = ue3FlowIpIface.GetAddress(i);
+
+    //     // The client, who is transmitting, is installed in the remote host,
+    //     // with destination address set to the address of the UE
+    //     dlClientUe3nonGbr.SetAttribute(
+    //         "Remote",
+    //         AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUe3nonGbr)));
+    //     // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
+    //     clientApps.Add(dlClientUe3nonGbr.Install(remoteHost));
+
+    //     // Activate a dedicated bearer for the traffic type
+    //     nrHelper->ActivateDedicatedEpsBearer(ueDevice, ue3nonGbrBearer, ue3nonGbrTft);
+    // }
+
+    // for (uint32_t i = 0; i < ue3flowContainer.GetN(); ++i)
+    // {
+    //     Ptr<NetDevice> ueDevice = ue3flowNetDev.Get(i);
+    //     Address ueAddress = ue3FlowIpIface.GetAddress(i);
+
+    //     // The client, who is transmitting, is installed in the remote host,
+    //     // with destination address set to the address of the UE
+    //     dlClientUe3Gbr.SetAttribute(
+    //         "Remote",
+    //         AddressValue(addressUtils::ConvertToSocketAddress(ueAddress, dlPortUe3Gbr)));
+    //     // dlClient.SetAttribute("RemoteAddress", AddressValue(ueAddress));
+    //     clientApps.Add(dlClientUe3Gbr.Install(remoteHost));
+
+    //     // Activate a dedicated bearer for the traffic type
+    //     nrHelper->ActivateDedicatedEpsBearer(ueDevice, ue3gbrBearer, ue3gbrTft);
+    // }
 
     // start UDP server and client apps
     serverApps.Start(udpAppStartTime);
@@ -745,18 +870,30 @@ main(int argc, char* argv[])
         }
 
         std::string flowType = "Unknown";
-            if (t.destinationPort == dlPortUenonGbr)
+            if (t.destinationPort == dlPortUe1nonGbr)
             {
                 flowType = "Non-GBR (Low-Latency)";
             }
-            else if (t.destinationPort == dlPortUeGbr)
+            else if (t.destinationPort == dlPortUe2Gbr)
             {
                 flowType = "GBR (Voice)";
             }
-            else if (t.destinationPort == dlPortUeDcGbr)
-            {
-                flowType = "DC-GBR (Video)";
-            }
+            // else if (t.destinationPort == dlPortUe3DcGbr)
+            // {
+            //     flowType = "DC-GBR (Video)";
+            // }
+            // else if (t.destinationPort == dlPortUe1Gbr)
+            // {
+            //     flowType = "GBR (Voice)";
+            // }
+            // else if (t.destinationPort == dlPortUe3nonGbr)
+            // {
+            //     flowType = "Non-GBR (Low-Latency)";
+            // }
+            // else if (t.destinationPort == dlPortUe3Gbr)
+            // {
+            //     flowType = "GBR (Voice)";
+            // }
 
         outFile << "Flow " << i->first << " (" << t.sourceAddress << ":" << t.sourcePort << " -> "
                 << t.destinationAddress << ":" << t.destinationPort << ") proto "
