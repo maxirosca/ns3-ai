@@ -31,14 +31,14 @@ try:
 except FileExistsError:
     pass  # File already exists
 
-csv_input_file = 'inputs_DlTransmission_zscore2.csv'
-csv_output_file = 'outputs_DlTransmission_no_duplicates2.csv'
+csv_input_file = '/net/home/rosca/maxi_model_training/inputs_DlTransmission_zscore2.csv'
+csv_output_file = '/net/home/rosca/maxi_model_training/outputs_DlTransmission_no_duplicates2.csv'
 dataset = NrDataset(csv_input_file, csv_output_file)
 
 num_samples = len(dataset)
 indices = list(range(num_samples))
-train_idx, temp_idx = train_test_split(indices, test_size=0.3, random_state=42, shuffle=True)
-val_idx, test_idx = train_test_split(temp_idx, test_size=0.3, random_state=42, shuffle=True)
+train_val_idx, test_idx = train_test_split(indices, test_size=0.1, random_state=42, shuffle=True)
+train_idx, val_idx = train_test_split(train_val_idx, test_size=0.1111111, random_state=42, shuffle=True)
 
 train_dataset = Subset(dataset, train_idx)
 val_dataset = Subset(dataset, val_idx)
@@ -54,7 +54,7 @@ test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 #     break
 
 # Initialize model, loss function, and optimizer
-# model_params = torch.load('/home/maximilianrosca/ns-3-dev/contrib/ai/examples/nr-transformer/nr_transformer_model.pth')
+# model_params = torch.load('nr_transformer_model.pth')
 model = NrTransformerModel(d_model=64, nhead=4, num_layers=2, num_ues=4).to(device)
 # model.load_state_dict(model_params['model_state_dict'])
 loss_fn = nn.CrossEntropyLoss()
@@ -116,25 +116,25 @@ def validation(val_loader, model, loss_fn):
     print(f"Validation Loss: {avg_loss:.4f} | Validation Accuracy: {avg_accuracy*100:.2f}%")
     return avg_loss, avg_accuracy
 
-# def test(test_loader, model, loss_fn):
-#     total_loss = 0.0
-#     total_accuracy = 0.0
-#     model.eval()
-#     with torch.no_grad():
-#         for X, y in test_loader:
-#             X, y = X.to(device), y.to(device)
-#             pred = model(X)
-#             pred = pred.permute(0, 2, 1)
-#             loss = loss_fn(pred, y)
-#             total_loss += loss.item()
-#             predicted_classes = pred.argmax(dim=1)
-#             correct = (predicted_classes == y).float()
-#             total_accuracy += correct.mean().item()
+def test(test_loader, model, loss_fn):
+     total_loss = 0.0
+     total_accuracy = 0.0
+     model.eval()
+     with torch.no_grad():
+         for X, y in test_loader:
+             X, y = X.to(device), y.to(device)
+             pred = model(X)
+             pred = pred.permute(0, 2, 1)
+             loss = loss_fn(pred, y)
+             total_loss += loss.item()
+             predicted_classes = pred.argmax(dim=1)
+             correct = (predicted_classes == y).float()
+             total_accuracy += correct.mean().item()
 
-#     avg_loss = total_loss / len(test_loader)
-#     avg_accuracy = total_accuracy / len(test_loader)
-#     print(f"Test Loss: {avg_loss:.4f} | Test Accuracy: {avg_accuracy*100:.2f}%")
-#     return avg_loss, avg_accuracy
+     avg_loss = total_loss / len(test_loader)
+     avg_accuracy = total_accuracy / len(test_loader)
+     print(f"Test Loss: {avg_loss:.4f} | Test Accuracy: {avg_accuracy*100:.2f}%")
+     return avg_loss, avg_accuracy
 
 def log_training_validation(epoch, train_loss, train_acc, val_loss, val_acc):
     with open(log_file_training_validation, "a", newline="") as f:
@@ -165,40 +165,40 @@ def log_test(test_loss, test_acc):
                round(test_acc*100, 2)]
         writer.writerow(row)
 
-# Training loop
-best_val_loss = float('inf')
-# best_val_loss = model_params['val_loss']
-patience, patience_counter = 5, 0
-num_epochs = 50
-# num_epochs = model_params['epoch']
-for t in range(num_epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    train_loss, train_acc = train(train_loader, model, loss_fn, optimizer)
-    val_loss, val_acc = validation(val_loader, model, loss_fn)
-    log_training_validation(t, train_loss, train_acc, val_loss, val_acc)
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        patience_counter = 0
-        torch.save(model.state_dict(), "nr_transformer_model_best.pth")
-        print("New best model saved!")
-    else:
-        patience_counter += 1
-        if patience_counter >= patience:
-            print("Early stopping triggered.")
-            break
+# # Training loop
+# best_val_loss = float('inf')
+# # best_val_loss = model_params['val_loss']
+# patience, patience_counter = 5, 0
+# num_epochs = 50
+# # num_epochs = model_params['epoch']
+# for t in range(num_epochs):
+    # print(f"Epoch {t+1}\n-------------------------------")
+    # train_loss, train_acc = train(train_loader, model, loss_fn, optimizer)
+    # val_loss, val_acc = validation(val_loader, model, loss_fn)
+    # log_training_validation(t, train_loss, train_acc, val_loss, val_acc)
+    # if val_loss < best_val_loss:
+        # best_val_loss = val_loss
+        # patience_counter = 0
+        # torch.save(model.state_dict(), "nr_transformer_model_best.pth")
+        # print("New best model saved!")
+    # else:
+        # patience_counter += 1
+        # if patience_counter >= patience:
+            # print("Early stopping triggered.")
+            # break
 
-# Save the model
-torch.save({
-    'epoch': num_epochs,
-    'model_state_dict': model.state_dict(),
-    'optimizer_state_dict': optimizer.state_dict(),
-    'val_loss': best_val_loss,
-}, 'nr_transformer_model.pth')
-print("Model saved!")
+# # Save the model
+# torch.save({
+    # 'epoch': num_epochs,
+    # 'model_state_dict': model.state_dict(),
+    # 'optimizer_state_dict': optimizer.state_dict(),
+    # 'val_loss': best_val_loss,
+# }, 'nr_transformer_model.pth')
+# print("Model saved!")
 
-# # Model testing
-# print("Testing the best model on the test set!")
-# model.load_state_dict(torch.load("nr_transformer_model_best.pth"))
-# test_loss, test_acc = test(test_loader, model, loss_fn)
-# log_test(test_loss, test_acc)
-# print("Testing completed!")
+# Model testing
+print("Testing the best model on the test set!")
+model.load_state_dict(torch.load("nr_transformer_model_best.pth"))
+test_loss, test_acc = test(test_loader, model, loss_fn)
+log_test(test_loss, test_acc)
+print("Testing completed!")
