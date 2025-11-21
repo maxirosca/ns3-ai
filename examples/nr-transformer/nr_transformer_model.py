@@ -12,10 +12,18 @@ class NrTransformerModel(nn.Module):
         self.embedding = nn.Linear(7, d_model)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        d_ffn_map = {
+            64: 640,
+            128: 1280,
+            256: 2560,
+            512: 5120
+        }
+        d_ffn = d_ffn_map[d_model]
+        
         self.forward_layer = nn.Sequential(
-            nn.Linear(5 * d_model, 512),
+            nn.Linear(5 * d_model, d_ffn),
             nn.ReLU(),
-            nn.Linear(512, 12 * num_ues)
+            nn.Linear(d_ffn, 12 * num_ues)
         )
 
     def forward(self, x):
@@ -76,7 +84,7 @@ class NrDataset(Dataset):
     def __getitem__(self, idx):
         return self.features[idx], self.labels[idx]
     
-# pytorch_total_params = sum(p.numel() for p in NrTransformerModel().parameters())
-# pytorch_total_trainable_params = sum(p.numel() for p in NrTransformerModel().parameters() if p.requires_grad)
-# print(f"Total parameters: {pytorch_total_params}")
-# print(f"Total trainable parameters: {pytorch_total_trainable_params}")
+pytorch_total_params = sum(p.numel() for p in NrTransformerModel().parameters())
+pytorch_total_trainable_params = sum(p.numel() for p in NrTransformerModel().parameters() if p.requires_grad)
+print(f"Total parameters: {pytorch_total_params}")
+print(f"Total trainable parameters: {pytorch_total_trainable_params}")
