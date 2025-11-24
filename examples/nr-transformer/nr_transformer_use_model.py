@@ -6,7 +6,7 @@ import torch
 from nr_transformer_model import NrTransformerModel
 import argparse
 
-UE_NUMS = 2
+FLOW_NUMS = 5
 # ALPHA = 1
 
 parser = argparse.ArgumentParser()
@@ -15,17 +15,17 @@ parser.add_argument("--numerology", type=int, required=True)
 parser.add_argument("--scenario", type=str, required=True)
 args = parser.parse_args()
 
-device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-print(f"Using {device} device")
+# device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+# print(f"Using {device} device")
 
-model = NrTransformerModel(input_dim=6)
-model.load_state_dict(torch.load('nr_transformer_model.pth', weights_only=True))
-model = model.to(device)
-model.eval()
+# model = NrTransformerModel()
+# model.load_state_dict(torch.load('nr_transformer_model.pth', weights_only=True))
+# model = model.to(device)
+# model.eval()
 
 print("Starting nr_transformer_use_model.py...")
 exp = Experiment("nr_transformer_demo", "../../../../", py_binding,
-                handleFinish=True, useVector=True, vectorSize=UE_NUMS)
+                handleFinish=True, useVector=True, vectorSize=FLOW_NUMS)
 setting_map = {
     "randomStream": args.randomStream,
     "numerology": args.numerology,
@@ -51,20 +51,22 @@ try:
         # send weights to c++
         inputs = torch.tensor([
             [
-                msgInterface.GetCpp2PyVector()[i].qci,
+                msgInterface.GetCpp2PyVector()[i].rnti,
+                msgInterface.GetCpp2PyVector()[i].resource_type,
                 msgInterface.GetCpp2PyVector()[i].priority,
-                msgInterface.GetCpp2PyVector()[i].holDelay,
-                msgInterface.GetCpp2PyVector()[i].delayBudget,
-                msgInterface.GetCpp2PyVector()[i].avgThroughput,
-                msgInterface.GetCpp2PyVector()[i].potThroughput
+                msgInterface.GetCpp2PyVector()[i].packetDelayBudget,
+                msgInterface.GetCpp2PyVector()[i].queueSize,
+                msgInterface.GetCpp2PyVector()[i].availableSymbols,
+                msgInterface.GetCpp2PyVector()[i].mcs
             ] for i in range(len(msgInterface.GetCpp2PyVector()))
-            ], dtype=torch.float32).unsqueeze(0).to(device)
-        with torch.no_grad():
-            outputs = model(inputs)
-            outputs = outputs.detach().cpu().numpy()
+            ], dtype=torch.float32)
+        print("Input tensor:", inputs)
+        # with torch.no_grad():
+        #     outputs = model(inputs)
+        #     outputs = outputs.detach().cpu().numpy()
             
-        for i in range(len(msgInterface.GetCpp2PyVector())):
-            msgInterface.GetPy2CppVector()[i].weight = outputs[0][i]
+        # for i in range(len(msgInterface.GetCpp2PyVector())):
+        #     msgInterface.GetPy2CppVector()[i].weight = outputs[0][i]
 
         msgInterface.PyRecvEnd()
         msgInterface.PySendEnd()

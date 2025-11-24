@@ -14,14 +14,28 @@ PYBIND11_MODULE(nr_transformer_interface_py_vec, m)
 {
     py::class_<FeaturesStruct>(m, "PyEnvStruct")
         .def(py::init<>())
-        .def_readwrite("qci", &FeaturesStruct::qci)
+        .def_readwrite("rnti", &FeaturesStruct::rnti)
+        .def_readwrite("resource_type", &FeaturesStruct::resource_type)
         .def_readwrite("priority", &FeaturesStruct::priority)
-        .def_readwrite("holDelay", &FeaturesStruct::holDelay)
-        .def_readwrite("delayBudget", &FeaturesStruct::delayBudget)
-        .def_readwrite("avgThroughput", &FeaturesStruct::avgThroughput)
-        .def_readwrite("potThroughput", &FeaturesStruct::potThroughput);
+        .def_readwrite("packetDelayBudget", &FeaturesStruct::packetDelayBudget)
+        .def_readwrite("queueSize", &FeaturesStruct::queueSize)
+        .def_readwrite("availableSymbols", &FeaturesStruct::availableSymbols)
+        .def_readwrite("mcs", &FeaturesStruct::mcs);
 
-    py::class_<ActStruct>(m, "PyActStruct").def(py::init<>()).def_readwrite("weight", &ActStruct::weight);
+    py::class_<ActStruct>(m, "PyActStruct")
+        .def(py::init<>())
+        .def_readwrite("sym1", &ActStruct::sym1)
+        .def_readwrite("sym2", &ActStruct::sym2)
+        .def_readwrite("sym3", &ActStruct::sym3)
+        .def_readwrite("sym4", &ActStruct::sym4)
+        .def_readwrite("sym5", &ActStruct::sym5)
+        .def_readwrite("sym6", &ActStruct::sym6)
+        .def_readwrite("sym7", &ActStruct::sym7)
+        .def_readwrite("sym8", &ActStruct::sym8)
+        .def_readwrite("sym9", &ActStruct::sym9)
+        .def_readwrite("sym10", &ActStruct::sym10)
+        .def_readwrite("sym11", &ActStruct::sym11)
+        .def_readwrite("sym12", &ActStruct::sym12);
 
     py::class_<ns3::Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>::Cpp2PyMsgVector>(m, "PyEnvVector")
         .def(

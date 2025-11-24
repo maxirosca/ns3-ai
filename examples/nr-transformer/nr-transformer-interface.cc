@@ -28,32 +28,43 @@ NrTransformerInterface::SetFeatures(std::vector<FeaturesStruct>& features)
     Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>* msgInterface =
         Ns3AiMsgInterface::Get()->GetInterface<FeaturesStruct, ActStruct>();
 
-    assert(msgInterface->GetCpp2PyVector()->size() == NUMS_UE);
+    assert(msgInterface->GetCpp2PyVector()->size() == MAX_NUM_FLOWS);
     
     msgInterface->CppSendBegin();
-    for (int j = 0; j < NUMS_UE; ++j)
+    for (int j = 0; j < MAX_NUM_FLOWS; ++j)
     {
-        msgInterface->GetCpp2PyVector()->at(j).qci =features[j].qci;
+        msgInterface->GetCpp2PyVector()->at(j).rnti =features[j].rnti;
+        msgInterface->GetCpp2PyVector()->at(j).resource_type = features[j].resource_type;
         msgInterface->GetCpp2PyVector()->at(j).priority = features[j].priority;
-        msgInterface->GetCpp2PyVector()->at(j).holDelay = features[j].holDelay;
-        msgInterface->GetCpp2PyVector()->at(j).delayBudget = features[j].delayBudget;
-        msgInterface->GetCpp2PyVector()->at(j).avgThroughput = features[j].avgThroughput;
-        msgInterface->GetCpp2PyVector()->at(j).potThroughput = features[j].potThroughput;
+        msgInterface->GetCpp2PyVector()->at(j).packetDelayBudget = features[j].packetDelayBudget;
+        msgInterface->GetCpp2PyVector()->at(j).queueSize = features[j].queueSize;
+        msgInterface->GetCpp2PyVector()->at(j).availableSymbols = features[j].availableSymbols;
+        msgInterface->GetCpp2PyVector()->at(j).mcs = features[j].mcs;
     }
     msgInterface->CppSendEnd();
 }
 
-std::vector<double>
+std::vector<uint8_t>
 NrTransformerInterface::GetWeight()
 {
      Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>* msgInterface =
         Ns3AiMsgInterface::Get()->GetInterface<FeaturesStruct, ActStruct>();
+    
+    assert(msgInterface->GetPy2CppVector()->size() == 1);
     msgInterface->CppRecvBegin();
-    std::vector<double> weights;
-    for (int j = 0; j < NUMS_UE; ++j)
-    {
-        weights.push_back(msgInterface->GetPy2CppVector()->at(j).weight);
-    }
+    std::vector<uint8_t> allocation;
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym1);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym2);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym3);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym4);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym5);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym6);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym7);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym8);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym9);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym10);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym11);
+    allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym12);
     msgInterface->CppRecvEnd();
-    return weights;
+    return allocation;
 }
