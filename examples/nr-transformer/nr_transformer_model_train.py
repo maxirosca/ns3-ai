@@ -46,23 +46,23 @@ try:
 except FileExistsError:
     pass  # File already exists
 
-csv_input_file = '/net/home/rosca/maxi_model_training/training_dataset2/inputs_DlTransmission_zscore2.csv'
-csv_output_file = '/net/home/rosca/maxi_model_training/training_dataset2/outputs_DlTransmission_no_duplicates2.csv'
+csv_input_file = '~/maxi_model_training/training_dataset4/inputs_DlTransmission_zscore4.csv'
+csv_output_file = '~/maxi_model_training/training_dataset4/outputs_DlTransmission_no_duplicates4.csv'
 dataset = NrDataset(csv_input_file, csv_output_file)
 
-hyperparameters_grid = {
-    "lr": [5e-4, 3e-4, 1e-4, 5e-5],
-    "d_model": [64, 128, 256, 512],
-    "nhead": [2, 4, 8],
-    "num_layers": [2, 3, 4, 5, 6],
-    "batch_size": [16, 32, 64]
-}
+# hyperparameters_grid = {
+#     "lr": [5e-4, 3e-4, 1e-4, 5e-5],
+#     "d_model": [64, 128, 256, 512],
+#     "nhead": [2, 4, 8],
+#     "num_layers": [2, 3, 4, 5, 6],
+#     "batch_size": [16, 32, 64]
+# }
 
-def generate_combinations(grid):
-    keys = list(grid.keys())
-    values = list(grid.values())
-    for combination in product(*values):
-        yield dict(zip(keys, combination))
+# def generate_combinations(grid):
+#     keys = list(grid.keys())
+#     values = list(grid.values())
+#     for combination in product(*values):
+#         yield dict(zip(keys, combination))
 
 num_samples = len(dataset)
 indices = list(range(num_samples))
@@ -94,36 +94,36 @@ def run_training(hparams):
     # Training loop
     best_val_loss = float('inf')
     # best_val_loss = model_params['val_loss']
-    patience, patience_counter = 5, 0
-    num_epochs = 50
-    model_name = (
-        f"nr_transformer_model_best_lr{hparams['lr']}_dmodel{hparams['d_model']}"
-        f"_nhead{hparams['nhead']}_layers{hparams['num_layers']}"
-        f"_bs{hparams['batch_size']}.pth"
-    )
+    # patience, patience_counter = 5, 0
+    num_epochs = 5
+    # model_name = (
+    #     f"nr_transformer_model_best_lr{hparams['lr']}_dmodel{hparams['d_model']}"
+    #     f"_nhead{hparams['nhead']}_layers{hparams['num_layers']}"
+    #     f"_bs{hparams['batch_size']}.pth"
+    # )
     # num_epochs = model_params['epoch']
     for t in range(num_epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train_loss, train_acc = train(train_loader, model, loss_fn, optimizer)
         val_loss, val_acc = validation(val_loader, model, loss_fn)
         log_training_validation(t, train_loss, train_acc, val_loss, val_acc)
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            patience_counter = 0
-            torch.save(model.state_dict(), model_name)
-            print("New best model saved!")
-        else:
-            patience_counter += 1
-            if patience_counter >= patience:
-                print("Early stopping triggered.")
-                break
+        # if val_loss < best_val_loss:
+        #     best_val_loss = val_loss
+        #     patience_counter = 0
+        #     torch.save(model.state_dict(), model_name)
+        #     print("New best model saved!")
+        # else:
+        #     patience_counter += 1
+        #     if patience_counter >= patience:
+        #         print("Early stopping triggered.")
+        #         break
     
-    # Model testing
-    print("Testing the best model on the test set!")
-    model.load_state_dict(torch.load("nr_transformer_model_best.pth"))
-    test_loss, test_acc = test(test_loader, model, loss_fn)
-    log_test(test_loss, test_acc)
-    print("Testing completed!")
+    # # Model testing
+    # print("Testing the best model on the test set!")
+    # model.load_state_dict(torch.load("nr_transformer_model_best.pth"))
+    # test_loss, test_acc = test(test_loader, model, loss_fn)
+    # log_test(test_loss, test_acc)
+    # print("Testing completed!")
 
 def train(train_loader, model, loss_fn, optimizer):
     total_loss = 0.0
@@ -221,16 +221,25 @@ def log_test(test_loss, test_acc, hparams):
                round(test_acc*100, 2)]
         writer.writerow(row)
 
-for hparams in generate_combinations(hyperparameters_grid):
-    config_tuple = (
-        hparams["lr"],
-        hparams["d_model"],
-        hparams["nhead"],
-        hparams["num_layers"],
-        hparams["batch_size"]
-    )
-    if config_tuple in trained_configs:
-        print(f"Skipping already trained configuration: {hparams}")
-        continue
-    print(f"Running training with hyperparameters: {hparams}")
-    run_training(hparams)
+# for hparams in generate_combinations(hyperparameters_grid):
+#     config_tuple = (
+#         hparams["lr"],
+#         hparams["d_model"],
+#         hparams["nhead"],
+#         hparams["num_layers"],
+#         hparams["batch_size"]
+#     )
+#     if config_tuple in trained_configs:
+#         print(f"Skipping already trained configuration: {hparams}")
+#         continue
+#     print(f"Running training with hyperparameters: {hparams}")
+#     run_training(hparams)
+
+hparams = {
+    "lr": 0.0005,
+    "d_model": 64,
+    "nhead": 8,
+    "num_layers": 2,
+    "batch_size": 32
+}
+run_training(hparams)
