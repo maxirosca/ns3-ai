@@ -11,6 +11,7 @@
 #include "ns3/nr-module.h"
 #include "ns3/point-to-point-module.h"
 #include "/home/maximilianrosca/ns-3-dev/contrib/ai/examples/nr-transformer/nr-transformer-global-randomStream.h"
+
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("NrTransformerSchedulerTestScenario");
@@ -57,12 +58,12 @@ main(int argc, char* argv[])
     Time simTime = MilliSeconds(6000);
     Time udpAppStartTime = MilliSeconds(400);
     bool enableTransformer = false;
-    bool enablePdcpDiscarding = true;
+    bool enablePdcpDiscarding = false;
 
     // NR parameters
-    uint16_t numerology = 0;
+    uint16_t numerology = 1;
     double frequency = 4e9;
-    double bandwidth = 50e6;
+    double bandwidth = 5e6;
     double txPower = 43;
     std::string schedulerType = "Qos";
     uint8_t enableOfdma = 0; // 0: no OFDMA, 1: OFDMA
@@ -281,7 +282,9 @@ main(int argc, char* argv[])
     /*
      * Setup the NR module
      * NR simulation:
-     * - nrEpcHelper, which will setup the core network
+     * - nrEpcHelper, which will setup the core network// nrHelper->SetUeBwpManagerAlgorithmAttribute("NGBR_VOICE_VIDEO_GAMING", UintegerValue(bwpIdUe3nonGbr));
+    // nrHelper->SetUeBwpManagerAlgorithmAttribute("GBR_NON_CONV_VIDEO", UintegerValue(bwpIdUe3Gbr));
+    // nrHe
      * - IdealBeamformingHelper, which takes care of the beamforming part
      * - NrHelper, which takes care of creating and connecting the various
      * part of the NR stack
@@ -503,7 +506,7 @@ main(int argc, char* argv[])
     // The server, that is the application which is listening, is installed in the UE
     serverApps.Add(dlPacketSinkUe1NonGbr.Install(ue1flowContainer));
     // serverApps.Add(dlPacketSinkUe1Gbr.Install(ue1flowContainer));
-   serverApps.Add(dlPacketSinkUe2Gbr.Install(ue2flowContainer));
+    serverApps.Add(dlPacketSinkUe2Gbr.Install(ue2flowContainer));
     serverApps.Add(dlPacketSinkUe3nonGbr.Install(ue3flowContainer));
     serverApps.Add(dlPacketSinkUe3Gbr.Install(ue3flowContainer));
     serverApps.Add(dlPacketSinkUe3DcGbr.Install(ue3flowContainer));
@@ -771,6 +774,8 @@ main(int argc, char* argv[])
 
     double averageFlowThroughput = 0.0;
     double averageFlowDelay = 0.0;
+    double meanFlowThroughput = 0.0;
+    double meanFlowDelay = 0.0;
 
     std::ofstream outFile;
     std::ofstream csvFile;
@@ -791,7 +796,7 @@ main(int argc, char* argv[])
     outFile << "\n===== New Simulation: =========================\n";
     if (csvFile.tellp() == 0)
         {
-            csvFile << "FlowId,randomStream,numerology,scenario,scheduler,Throughput,Delay,Jitter\n";
+            csvFile << "Simulation,FlowId,randomStream,numerology,scenario,scheduler,FlowType,Throughput,Delay,Jitter\n";
         }
         
     double flowDuration = (simTime - udpAppStartTime).GetSeconds();
@@ -814,7 +819,7 @@ main(int argc, char* argv[])
         std::string flowType = "Unknown";
             if (t.destinationPort == dlPortUe1nonGbr)
             {
-                flowType = "Non-GBR VoIP";
+                flowType = "UE1 Non-GBR Voice";
             }
             // else if (t.destinationPort == dlPortUe1Gbr)
             // {
@@ -822,19 +827,19 @@ main(int argc, char* argv[])
             // }
             else if (t.destinationPort == dlPortUe2Gbr)
             {
-                flowType = "GBR Video";
+                flowType = "UE2 GBR Video";
             }
             else if (t.destinationPort == dlPortUe3nonGbr)
             {
-                flowType = "Non-GBR VoIP";
+                flowType = "UE3 Non-GBR Voice";
             }
             else if (t.destinationPort == dlPortUe3Gbr)
             {
-                flowType = "GBR Video";
+                flowType = "UE3 GBR Video";
             }
             else if (t.destinationPort == dlPortUe3DcGbr)
             {
-                flowType = "DC-GBR ";
+                flowType = "UE3 DC-GBR ";
             }
 
         outFile << "Flow " << i->first << " (" << t.sourceAddress << ":" << t.sourcePort << " -> "
@@ -854,7 +859,7 @@ main(int argc, char* argv[])
         outFile << "  TxOffered:  " << i->second.txBytes * 8.0 / flowDuration / 1000.0 / 1000.0
                 << " Mbps\n";
         outFile << "  Rx Bytes:   " << i->second.rxBytes << "\n";
-        csvFile << i->first << "," << randomStream << "," << numerology << "," << scenario << ","
+        csvFile << simulationNr << "," << i->first << "," << randomStream << "," << numerology << "," << scenario << ","
                 << scheduler.str() << "," << flowType << ",";
         if (i->second.rxPackets > 0)
         {
@@ -884,9 +889,8 @@ main(int argc, char* argv[])
         outFile << "  Rx Packets: " << i->second.rxPackets << "\n";
     }
 
-    double meanFlowThroughput = averageFlowThroughput / stats.size();
-    double meanFlowDelay = averageFlowDelay / stats.size();
-
+    meanFlowThroughput = averageFlowThroughput / stats.size();
+    meanFlowDelay = averageFlowDelay / stats.size();
     outFile << "\n\n  Mean flow throughput: " << meanFlowThroughput << " Mbps\n";
     outFile << "  Mean flow delay: " << meanFlowDelay << " ms\n";
 
