@@ -44,7 +44,7 @@ NrTransformerInterface::SetFeatures(std::vector<FeaturesStruct>& features)
     msgInterface->CppSendEnd();
 }
 
-std::vector<uint8_t>
+std::vector<double>
 NrTransformerInterface::GetWeight()
 {
      Ns3AiMsgInterfaceImpl<FeaturesStruct, ActStruct>* msgInterface =
@@ -52,7 +52,7 @@ NrTransformerInterface::GetWeight()
     
     assert(msgInterface->GetPy2CppVector()->size() == 1);
     msgInterface->CppRecvBegin();
-    std::vector<uint8_t> allocation;
+    std::vector<double> allocation;
     allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym1);
     allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym2);
     allocation.push_back(msgInterface->GetPy2CppVector()->at(0).sym3);

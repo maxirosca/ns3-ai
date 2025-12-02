@@ -24,18 +24,18 @@ struct EnvStruct
 
 struct ActStruct
 {
-    uint8_t sym1;
-    uint8_t sym2;
-    uint8_t sym3;
-    uint8_t sym4;
-    uint8_t sym5;
-    uint8_t sym6;
-    uint8_t sym7;
-    uint8_t sym8;
-    uint8_t sym9;
-    uint8_t sym10;
-    uint8_t sym11;
-    uint8_t sym12;
+    double sym1;
+    double sym2;
+    double sym3;
+    double sym4;
+    double sym5;
+    double sym6;
+    double sym7;
+    double sym8;
+    double sym9;
+    double sym10;
+    double sym11;
+    double sym12;
 };
 
 class NrTransformerInterface : public Object
@@ -46,5 +46,5 @@ class NrTransformerInterface : public Object
     static TypeId GetTypeId();
     
     void SetFeatures(std::vector<FeaturesStruct>& features);
-    std::vector<uint8_t> GetWeight();
+    std::vector<double> GetWeight();
 };

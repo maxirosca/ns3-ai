@@ -80,6 +80,13 @@ set(gym_interface_hdrs
         model/gym-interface/cpp/spaces.h
 )
 
+set(nr_transformer_interface_srcs
+	model/nr-transformer-interface/nr-transformer-interface.cc
+)
+set(nr_transformer_interface_hdrs
+	model/nr-transformer-interface/nr-transformer-interface.h
+)
+
 # protobuf_generate function is missing in some installations by package manager
 check_function_exists(protobuf_generate protobuf_generate_exists)
 if(${protobuf_generate_exists})
@@ -106,8 +113,8 @@ protobuf_generate(
 
 build_lib(
         LIBNAME ai
-        SOURCE_FILES ${msg_interface_srcs} ${gym_interface_srcs}
-        HEADER_FILES ${msg_interface_hdrs} ${gym_interface_hdrs}
+        SOURCE_FILES ${msg_interface_srcs} ${gym_interface_srcs} ${nr_transformer_interface_srcs}
+        HEADER_FILES ${msg_interface_hdrs} ${gym_interface_hdrs} ${nr_transformer_interface_hdrs}
         LIBRARIES_TO_LINK ${libcore} protobuf::libprotobuf
 )
 add_dependencies(${libai} proto-objects)

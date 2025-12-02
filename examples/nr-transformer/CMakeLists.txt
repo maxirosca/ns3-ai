@@ -1,7 +1,6 @@
 build_lib_example(
         NAME nr_transformer_demo
         SOURCE_FILES
-                nr-transformer-interface.cc
                 nr-transformer-scheduler-test-scenario.cc
         LIBRARIES_TO_LINK
                 ${libai} 

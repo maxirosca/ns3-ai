@@ -1,4 +1,4 @@
-#include "nr-transformer-interface.h"
+#include "ns3/nr-transformer-interface.h"
 
 #include <ns3/ai-module.h>
 
