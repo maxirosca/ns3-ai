@@ -106,7 +106,7 @@ def run_training(hparams):
         print(f"Epoch {t+1}\n-------------------------------")
         train_loss, train_acc = train(train_loader, model, loss_fn, optimizer)
         val_loss, val_acc = validation(val_loader, model, loss_fn)
-        log_training_validation(t, train_loss, train_acc, val_loss, val_acc)
+        log_training_validation(t, train_loss, train_acc, val_loss, val_acc, hparams)
         # if val_loss < best_val_loss:
         #     best_val_loss = val_loss
         #     patience_counter = 0
@@ -121,7 +121,7 @@ def run_training(hparams):
     # # Model testing
     # print("Testing the best model on the test set!")
     # model.load_state_dict(torch.load("nr_transformer_model_best.pth"))
-    # test_loss, test_acc = test(test_loader, model, loss_fn)
+    # test_loss, test_acc = test(test_loader, model, loss_fn, hparams)
     # log_test(test_loss, test_acc)
     # print("Testing completed!")
 
