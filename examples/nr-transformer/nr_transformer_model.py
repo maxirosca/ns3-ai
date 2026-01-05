@@ -6,37 +6,41 @@ import numpy as np
 
 
 class NrTransformerModel(nn.Module):
-    def __init__(self, d_model=64, nhead=4, num_layers=2, num_ues=4):
+    def __init__(self, d_model, nhead, num_layers, num_ues=3):
         super().__init__()
-        self.num_ues = num_ues
+        self.num_ues = num_ues + 1 # including rnti == 0 for nonallocated symbols
         self.embedding = nn.Linear(7, d_model)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, batch_first=True)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        d_ffn_map = {
-            64: 640,
-            128: 1280,
-            256: 2560,
-            512: 5120
-        }
-        d_ffn = d_ffn_map[d_model]
+        
+        d_ffn = 10 * d_model
         
         self.forward_layer = nn.Sequential(
-            nn.Linear(5 * d_model, d_ffn),
+            nn.Linear(d_model, d_ffn),
             nn.ReLU(),
-            nn.Linear(d_ffn, 12 * num_ues)
+            nn.Dropout(0.2),
+            nn.Linear(d_ffn, 12 * self.num_ues)
         )
 
-    def forward(self, x):
+    def masked_mean(self, x, pad_mask):
+        valid_mask = (~pad_mask).unsqueeze(-1).float()
+        summed = (x * valid_mask).sum(dim=1)
+        counts = valid_mask.sum(dim=1).clamp(min=1)
+        return summed / counts
+    
+    def forward(self, x, src_key_padding_mask=None):
         x = self.embedding(x)
-        x = self.transformer(x)
-        x = x.flatten(start_dim=1)
+        x = self.transformer(x, src_key_padding_mask=src_key_padding_mask)
+        if src_key_padding_mask is not None:
+            x = self.masked_mean(x, src_key_padding_mask)
+        else:
+            x = x.mean(dim=1)
         x = self.forward_layer(x)
         # print(f"Model output shape before reshape: {x.shape}")
         x = x.view(-1, 12, self.num_ues)
         # print(f"Model output shape after reshape: {x.shape}")
         return x
-
-
+    
 class NrDataset(Dataset):
     def __init__(self, csv_input_file, csv_output_file):
         self.input_data = pd.read_csv(csv_input_file)
@@ -83,8 +87,3 @@ class NrDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.features[idx], self.labels[idx]
-    
-pytorch_total_params = sum(p.numel() for p in NrTransformerModel().parameters())
-pytorch_total_trainable_params = sum(p.numel() for p in NrTransformerModel().parameters() if p.requires_grad)
-print(f"Total parameters: {pytorch_total_params}")
-print(f"Total trainable parameters: {pytorch_total_trainable_params}")
