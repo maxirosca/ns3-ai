@@ -61,7 +61,7 @@ main(int argc, char* argv[])
     bool enablePdcpDiscarding = false;
 
     // NR parameters
-    uint16_t numerology = 1;
+    uint16_t numerology = 0;
     double frequency = 4e9;
     double bandwidth = 5e6;
     double txPower = 43;
@@ -306,7 +306,7 @@ main(int argc, char* argv[])
     scheduler << "ns3::NrMacScheduler" << subType << schedulerType;
     std::cout << "Scheduler: " << scheduler.str() << std::endl;
     nrHelper->SetSchedulerTypeId(TypeId::LookupByName(scheduler.str()));
-    // nrHelper->SetSchedulerAttribute("ActiveDlTransformer", BooleanValue(enableTransformer));
+    nrHelper->SetSchedulerAttribute("ActiveDlTransformer", BooleanValue(enableTransformer));
                                      
 
     // Set the scheduler type for the QoS LC scheduler if enabled
@@ -796,7 +796,7 @@ main(int argc, char* argv[])
     outFile << "\n===== New Simulation: =========================\n";
     if (csvFile.tellp() == 0)
         {
-            csvFile << "Simulation,FlowId,randomStream,numerology,scenario,scheduler,FlowType,Throughput,Delay,Jitter\n";
+            csvFile << "Simulation,FlowId,randomStream,numerology,scenario,scheduler,ML,FlowType,Throughput,Delay,Jitter\n";
         }
         
     double flowDuration = (simTime - udpAppStartTime).GetSeconds();
@@ -860,7 +860,7 @@ main(int argc, char* argv[])
                 << " Mbps\n";
         outFile << "  Rx Bytes:   " << i->second.rxBytes << "\n";
         csvFile << simulationNr << "," << i->first << "," << randomStream << "," << numerology << "," << scenario << ","
-                << scheduler.str() << "," << flowType << ",";
+                << scheduler.str() << "," << enableTransformer << "," << flowType << ",";
         if (i->second.rxPackets > 0)
         {
             // Measure the duration of the flow from receiver's perspectivee
