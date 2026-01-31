@@ -16,7 +16,7 @@ import numpy as np
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 print(f"Using {device} device")
 
-log_file_training_validation = '~/maxi_model_training/ns3-ai/examples/nr-transformer/gridsearch.2/training_validation_gridsearch_combined1-7.csv'
+log_file_training_validation = '.csv'
 try:
     with open(log_file_training_validation, 'x', newline="") as f:
         writer = csv.writer(f)
@@ -37,7 +37,7 @@ else:
     trained_configs = set()
     print("No privrous training logs found")
 
-log_file_test = 'test_log_file-v2.csv'
+log_file_test = '.csv'
 try:
     with open(log_file_test, 'x', newline="") as f:
         writer = csv.writer(f)
@@ -56,37 +56,45 @@ except FileExistsError:
 #         *[f"y_pred_{i}" for i in range(12)]
 #     ])
 
-csv_input_file = '~/maxi_model_training/training_dataset4.1/inputs_DlTransmission_zscore.csv'
-csv_output_file = '~/maxi_model_training/training_dataset4.1/outputs_DlTransmission_no_duplicates.csv'
-dataset = NrDataset(csv_input_file, csv_output_file)
+train_input = pd.read_csv('~/maxi_model_training/training_dataset5/inputs_DlTransmission_train.csv')
+val_input = pd.read_csv('~/maxi_model_training/training_dataset5/inputs_DlTransmission_val.csv')
+test_input = pd.read_csv('~/maxi_model_training/training_dataset5/inputs_DlTransmission_test.csv')
 
-# --------------------------------------------------------------------------------->
-# ---------------------------------- Split dataset in 3 sets ---------------------->
-# --------------------------------------------------------------------------------->
-N = len(dataset)
-indices_split = np.arange(N)
+train_output = pd.read_csv('~/maxi_model_training/training_dataset5/outputs_DlTransmission_train.csv')
+val_output = pd.read_csv('~/maxi_model_training/training_dataset5/outputs_DlTransmission_val.csv')
+test_output = pd.read_csv('~/maxi_model_training/training_dataset5/outputs_DlTransmission_test.csv')
 
-# Shuffle once
-rng = np.random.default_rng(seed=42)
-rng.shuffle(indices_split)
+train_dataset = NrDataset(train_input, train_output)
+val_dataset = NrDataset(val_input, val_output)
+test_dataset = NrDataset(test_input, test_output)
 
-# Define sizes
-size_10 = int(0.1 * N)
-size_33 = int(0.33 * N)
-size_66 = int(0.66 * N)
+# # --------------------------------------------------------------------------------->
+# # ---------------------------------- Split dataset in 3 sets ---------------------->
+# # --------------------------------------------------------------------------------->
+# N = len(dataset)
+# indices_split = np.arange(N)
 
-# Nested subsets
-idx_10 = indices_split[:size_10]
-idx_33 = indices_split[:size_33]
-idx_66 = indices_split[:size_66]
+# # Shuffle once
+# rng = np.random.default_rng(seed=42)
+# rng.shuffle(indices_split)
 
-# Create the actual datasets
-dataset_10 = Subset(dataset, idx_10)
-dataset_33 = Subset(dataset, idx_33)
-dataset_66 = Subset(dataset, idx_66)
-# --------------------------------------------------------------------------------->
-# ---------------------------------- End split dataset in 3 sets ------------------>
-# --------------------------------------------------------------------------------->
+# # Define sizes
+# size_10 = int(0.1 * N)
+# size_33 = int(0.33 * N)
+# size_66 = int(0.66 * N)
+
+# # Nested subsets
+# idx_10 = indices_split[:size_10]
+# idx_33 = indices_split[:size_33]
+# idx_66 = indices_split[:size_66]
+
+# # Create the actual datasets
+# dataset_10 = Subset(dataset, idx_10)
+# dataset_33 = Subset(dataset, idx_33)
+# dataset_66 = Subset(dataset, idx_66)
+# # --------------------------------------------------------------------------------->
+# # ---------------------------------- End split dataset in 3 sets ------------------>
+# # --------------------------------------------------------------------------------->
 
 hyperparameters_grid = {
     "lr": [1e-5],
@@ -101,15 +109,6 @@ def generate_combinations(grid):
     values = list(grid.values())
     for combination in product(*values):
         yield dict(zip(keys, combination))
-
-num_samples = len(dataset)
-indices = list(range(num_samples))
-train_idx, temp_idx = train_test_split(indices, test_size=0.4, random_state=42, shuffle=True)
-val_idx, test_idx = train_test_split(temp_idx, test_size=0.5, random_state=42, shuffle=True)
-
-train_dataset = Subset(dataset, train_idx)
-val_dataset = Subset(dataset, val_idx)
-test_dataset = Subset(dataset, test_idx)
 
 def run_training(hparams):
     train_loader = DataLoader(train_dataset, batch_size=hparams["batch_size"], shuffle=True)
