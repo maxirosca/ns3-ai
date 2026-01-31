@@ -4,13 +4,13 @@ import hashlib
 import numpy as np
 
 
-# Load the CSV files
-input_df = pd.read_csv('inputs_DlTransmission.csv')
-output_df = pd.read_csv('outputs_DlTransmission.csv') # sed -i 's/,$//' outputs_DlTransmission.csv to remove last empty column
-# Define identifying and feature columns
+# # Load the CSV files
+# input_df = pd.read_csv('inputs_DlTransmission.csv')
+# output_df = pd.read_csv('outputs_DlTransmission.csv') # sed -i 's/,$//' outputs_DlTransmission.csv to remove last empty column
+# # Define identifying and feature columns
 slot_cols = ["simulation", "frame", "subframe", "slot"]
-flow_cols = ["rnti", "resource_type", "priority", "delay_budget", 
-             "available_symbols", "queue_size", "mcs", "bandwidth"]
+# flow_cols = ["rnti", "resource_type", "priority", "delay_budget", 
+#              "available_symbols", "queue_size", "mcs", "bandwidth"]
 
 # # *************************************************************************
 # #********************* Remove duplicate data ******************************
@@ -164,32 +164,105 @@ flow_cols = ["rnti", "resource_type", "priority", "delay_budget",
 # # ************************************************************************
 
 
-# ***********************************************************************
-# ********* Apply z-score normalization to the relevant columns**********
-# ***********************************************************************
-padded_input_df = pd.read_csv('inputs_DlTransmission_padded.csv')
-cols_to_zscore = ["priority", "delay_budget", "available_symbols", "queue_size", "mcs", "bandwidth"]
+# # ***********************************************************************
+# # ********* Apply z-score normalization to the relevant columns**********
+# # ***********************************************************************
+# padded_input_df = pd.read_csv('inputs_DlTransmission_padded.csv')
+# cols_to_zscore = ["priority", "delay_budget", "available_symbols", "queue_size", "mcs", "bandwidth"]
 
-# Mask: exclude padded rows (rnti == 0)
-mask = padded_input_df["rnti"] != 0
+# # Mask: exclude padded rows (rnti == 0)
+# mask = padded_input_df["rnti"] != 0
 
-# Conversion to float for normalization
-padded_input_df[cols_to_zscore] = padded_input_df[cols_to_zscore].astype(float)
-mean = padded_input_df.loc[mask, cols_to_zscore].mean()  # Compute the mean
-std = padded_input_df.loc[mask, cols_to_zscore].std()  # Compute the standard deviation
+# # Conversion to float for normalization
+# padded_input_df[cols_to_zscore] = padded_input_df[cols_to_zscore].astype(float)
+# mean = padded_input_df.loc[mask, cols_to_zscore].mean()  # Compute the mean
+# std = padded_input_df.loc[mask, cols_to_zscore].std()  # Compute the standard deviation
 
-mean_tensor = torch.tensor([mean[col] for col in cols_to_zscore], dtype=torch.float32)
-std_tensor = torch.tensor([std[col] for col in cols_to_zscore], dtype=torch.float32)
-padded_input_df.loc[mask, cols_to_zscore] = (padded_input_df.loc[mask, cols_to_zscore] - mean) / std  # Apply z-score normalization
+# mean_tensor = torch.tensor([mean[col] for col in cols_to_zscore], dtype=torch.float32)
+# std_tensor = torch.tensor([std[col] for col in cols_to_zscore], dtype=torch.float32)
+# padded_input_df.loc[mask, cols_to_zscore] = (padded_input_df.loc[mask, cols_to_zscore] - mean) / std  # Apply z-score normalization
 
-assert not padded_input_df.loc[mask, cols_to_zscore].isna().any().any()
-assert not np.isinf(padded_input_df.loc[mask, cols_to_zscore]).any().any()
-# Save the normalization parameters
-torch.save({'mean': mean_tensor, 'std': std_tensor, "cols": cols_to_zscore}, 'normalization_params.pt')
+# assert not padded_input_df.loc[mask, cols_to_zscore].isna().any().any()
+# assert not np.isinf(padded_input_df.loc[mask, cols_to_zscore]).any().any()
+# # Save the normalization parameters
+# torch.save({'mean': mean_tensor, 'std': std_tensor, "cols": cols_to_zscore}, 'normalization_params.pt')
 
-# ************************************************************************
-# ********* End z-score normalization to the relevant columns*************
-# ************************************************************************
+# # ************************************************************************
+# # ********* End z-score normalization to the relevant columns*************
+# # ************************************************************************
 
-# Save the processed DataFrame to a new CSV file
-padded_input_df.to_csv('inputs_DlTransmission_zscore.csv', index=False)
+# # Save the processed DataFrame to a new CSV file
+# padded_input_df.to_csv('inputs_DlTransmission_zscore.csv', index=False)
+
+
+# ************** Split data into training, validation, and test sets ****************
+input_df = pd.read_csv('/home/maximilianrosca/Masterarbeit/training_dataset5/inputs_DlTransmission.csv')
+output_df = pd.read_csv('/home/maximilianrosca/Masterarbeit/training_dataset5/outputs_DlTransmission.csv')
+
+# Unique simulations
+all_sims_input = sorted(input_df['simulation'].unique())
+all_sims_output = sorted(output_df['simulation'].unique())
+assert len(all_sims_input) == 72
+assert len(all_sims_output) == 72
+assert all_sims_input == all_sims_output
+
+groups = {
+    "3flows": list(range(0, 18)),
+    "4flows": list(range(18, 36)),
+    "5flows_A": list(range(36, 54)),
+    "5flows_B": list(range(54, 72)),
+}
+
+rng = np.random.default_rng(seed=42)
+
+train_sims = []
+val_sims = []
+test_sims = []
+
+for name, sims in groups.items():
+    sims = np.array(sims)
+    rng.shuffle(sims)
+
+    n = len(sims)
+    n_train = int(0.6 * n)
+    n_val = int(0.2 * n)
+
+    train_sims.extend(sims[:n_train])
+    val_sims.extend(sims[n_train:n_train + n_val])
+    test_sims.extend(sims[n_train + n_val:])
+
+train_input = input_df[input_df['simulation'].isin(train_sims)].copy()
+val_input = input_df[input_df['simulation'].isin(val_sims)].copy()
+test_input = input_df[input_df['simulation'].isin(test_sims)].copy()
+
+train_output = output_df[output_df['simulation'].isin(train_sims)].copy()
+val_output = output_df[output_df['simulation'].isin(val_sims)].copy()
+test_output = output_df[output_df['simulation'].isin(test_sims)].copy()
+
+train_input.to_csv('inputs_DlTransmission_train.csv', index=False)
+val_input.to_csv('inputs_DlTransmission_val.csv', index=False)
+test_input.to_csv('inputs_DlTransmission_test.csv', index=False)
+
+train_output.to_csv('outputs_DlTransmission_train.csv', index=False)
+val_output.to_csv('outputs_DlTransmission_val.csv', index=False)
+test_output.to_csv('outputs_DlTransmission_test.csv', index=False)
+
+assert set(train_sims).isdisjoint(set(val_sims))
+assert set(train_sims).isdisjoint(set(test_sims))
+assert set(val_sims).isdisjoint(set(test_sims))
+
+def count_group(sims, start, end):
+    return sum(start <= s < end for s in sims)
+
+for name, (a, b) in zip(
+    ["3flows", "4flows", "5A", "5B"],
+    [(0,18), (18,36), (36,54), (54,72)]
+):
+    print(name,
+          count_group(train_sims, a, b),
+          count_group(val_sims, a, b),
+          count_group(test_sims, a, b))
+    
+assert set(train_input[slot_cols].apply(tuple, axis=1)) == \
+       set(train_output[slot_cols].apply(tuple, axis=1))
+# -------------------------------------------------------------------------
