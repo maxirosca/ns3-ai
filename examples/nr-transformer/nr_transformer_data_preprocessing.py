@@ -125,71 +125,71 @@ flow_cols = ["rnti", "resource_type", "priority", "delay_budget",
 # ******************** Zero-padding ***************************************
 # *************************************************************************
 
-# Maximum number of flows per slot
-MAX_FLOWS = 5
-inp_clean = pd.read_csv('inputs_DlTransmission_no_duplicates.csv')
-# Output container
-padded_rows = []
+# # Maximum number of flows per slot
+# MAX_FLOWS = 5
+# inp_clean = pd.read_csv('inputs_DlTransmission_no_duplicates.csv')
+# # Output container
+# padded_rows = []
 
-for key, group in inp_clean.groupby(slot_cols):
-    # Sort deterministically by resource_type and rnti
-    group_sorted = group.sort_values(by=["resource_type", "rnti"], kind="mergesort")
+# for key, group in inp_clean.groupby(slot_cols):
+#     # Sort deterministically by resource_type and rnti
+#     group_sorted = group.sort_values(by=["resource_type", "rnti"], kind="mergesort")
 
-    # Count number of flows in this slot
-    num_flows = len(group_sorted)
+#     # Count number of flows in this slot
+#     num_flows = len(group_sorted)
 
-    # If fewer than MAX_FLOWS, append zero-padded rows
-    if num_flows < MAX_FLOWS:
-        assert (group_sorted["rnti"].iloc[num_flows:] == 0).all(), f"Padding error in slot {key}: non-zero rnti in padded rows"
-        # Build padding rows with zeros (same columns as group_sorted)
-        pad_rows = pd.concat(
-            [pd.DataFrame([[*key, 0, 0, 0, 0, 0, 0, 0]], columns=slot_cols + flow_cols)] * (MAX_FLOWS - num_flows),
-            ignore_index=True
-        )
-        group_sorted = pd.concat([group_sorted, pad_rows], ignore_index=True)
+#     # If fewer than MAX_FLOWS, append zero-padded rows
+#     if num_flows < MAX_FLOWS:
+#         assert (group_sorted["rnti"].iloc[num_flows:] == 0).all(), f"Padding error in slot {key}: non-zero rnti in padded rows"
+#         # Build padding rows with zeros (same columns as group_sorted)
+#         pad_rows = pd.concat(
+#             [pd.DataFrame([[*key, 0, 0, 0, 0, 0, 0, 0]], columns=slot_cols + flow_cols)] * (MAX_FLOWS - num_flows),
+#             ignore_index=True
+#         )
+#         group_sorted = pd.concat([group_sorted, pad_rows], ignore_index=True)
 
-    # Append processed group
-    padded_rows.append(group_sorted)
+#     # Append processed group
+#     padded_rows.append(group_sorted)
 
-# Combine all processed groups into a single DataFrame
-padded_input_df = pd.concat(padded_rows, ignore_index=True)
-for col in slot_cols:
-    padded_input_df[col] = padded_input_df[col].astype(int)
-padded_input_df = padded_input_df.sort_values(slot_cols).reset_index(drop=True)
-padded_input = "inputs_DlTransmission_padded.csv"
-padded_input_df.to_csv(padded_input, index=False)
-
-# ************************************************************************
-# ******************** End zero-padding **********************************
-# ************************************************************************
-
-
-# # ***********************************************************************
-# # ********* Apply z-score normalization to the relevant columns**********
-# # ***********************************************************************
-# padded_input_df = pd.read_csv('inputs_DlTransmission_padded.csv')
-# cols_to_zscore = ["priority", "delay_budget", "available_symbols", "queue_size", "mcs"]
-
-# # Mask: exclude padded rows (rnti == 0)
-# mask = padded_input_df["rnti"] != 0
-
-# # Conversion to float for normalization
-# padded_input_df[cols_to_zscore] = padded_input_df[cols_to_zscore].astype(float)
-# mean = padded_input_df.loc[mask, cols_to_zscore].mean()  # Compute the mean
-# std = padded_input_df.loc[mask, cols_to_zscore].std()  # Compute the standard deviation
-
-# mean_tensor = torch.tensor([mean[col] for col in cols_to_zscore], dtype=torch.float32)
-# std_tensor = torch.tensor([std[col] for col in cols_to_zscore], dtype=torch.float32)
-# padded_input_df.loc[mask, cols_to_zscore] = (padded_input_df.loc[mask, cols_to_zscore] - mean) / std  # Apply z-score normalization
-
-# assert not padded_input_df.loc[mask, cols_to_zscore].isna().any().any()
-# assert not np.isinf(padded_input_df.loc[mask, cols_to_zscore]).any().any()
-# # Save the normalization parameters
-# torch.save({'mean': mean_tensor, 'std': std_tensor, "cols": cols_to_zscore}, 'normalization_params.pt')
+# # Combine all processed groups into a single DataFrame
+# padded_input_df = pd.concat(padded_rows, ignore_index=True)
+# for col in slot_cols:
+#     padded_input_df[col] = padded_input_df[col].astype(int)
+# padded_input_df = padded_input_df.sort_values(slot_cols).reset_index(drop=True)
+# padded_input = "inputs_DlTransmission_padded.csv"
+# padded_input_df.to_csv(padded_input, index=False)
 
 # # ************************************************************************
-# # ********* End z-score normalization to the relevant columns*************
+# # ******************** End zero-padding **********************************
 # # ************************************************************************
 
-# # Save the processed DataFrame to a new CSV file
-# padded_input_df.to_csv('inputs_DlTransmission_zscore.csv', index=False)
+
+# ***********************************************************************
+# ********* Apply z-score normalization to the relevant columns**********
+# ***********************************************************************
+padded_input_df = pd.read_csv('inputs_DlTransmission_padded.csv')
+cols_to_zscore = ["priority", "delay_budget", "available_symbols", "queue_size", "mcs", "bandwidth"]
+
+# Mask: exclude padded rows (rnti == 0)
+mask = padded_input_df["rnti"] != 0
+
+# Conversion to float for normalization
+padded_input_df[cols_to_zscore] = padded_input_df[cols_to_zscore].astype(float)
+mean = padded_input_df.loc[mask, cols_to_zscore].mean()  # Compute the mean
+std = padded_input_df.loc[mask, cols_to_zscore].std()  # Compute the standard deviation
+
+mean_tensor = torch.tensor([mean[col] for col in cols_to_zscore], dtype=torch.float32)
+std_tensor = torch.tensor([std[col] for col in cols_to_zscore], dtype=torch.float32)
+padded_input_df.loc[mask, cols_to_zscore] = (padded_input_df.loc[mask, cols_to_zscore] - mean) / std  # Apply z-score normalization
+
+assert not padded_input_df.loc[mask, cols_to_zscore].isna().any().any()
+assert not np.isinf(padded_input_df.loc[mask, cols_to_zscore]).any().any()
+# Save the normalization parameters
+torch.save({'mean': mean_tensor, 'std': std_tensor, "cols": cols_to_zscore}, 'normalization_params.pt')
+
+# ************************************************************************
+# ********* End z-score normalization to the relevant columns*************
+# ************************************************************************
+
+# Save the processed DataFrame to a new CSV file
+padded_input_df.to_csv('inputs_DlTransmission_zscore.csv', index=False)
