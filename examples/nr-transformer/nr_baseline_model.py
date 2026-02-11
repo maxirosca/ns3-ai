@@ -26,8 +26,8 @@ class NrBaselineModel(nn.Module):
         out = out.view(-1, self.output_size, self.num_ues)
         return out
 
-model = NrBaselineModel(input_size=35, hidden_dim=240, output_size=12, num_ues=3)
-pytorch_total_params = sum(p.numel() for p in model.parameters())  
-print(f"Total parameters: {pytorch_total_params}")
-for name, param in model.named_parameters():
-    print(f"{name:40s} {param.numel():6d}")
+# model = NrBaselineModel(input_size=35, hidden_dim=240, output_size=12, num_ues=3)
+# pytorch_total_params = sum(p.numel() for p in model.parameters())  
+# print(f"Total parameters: {pytorch_total_params}")
+# for name, param in model.named_parameters():
+#     print(f"{name:40s} {param.numel():6d}")
