@@ -5,12 +5,13 @@ import numpy as np
 
 
 # Load the CSV files
-input_df = pd.read_csv('~/maxi_model_training/training_dataset5/inputs_DlTransmission.csv')
-output_df = pd.read_csv('~/maxi_model_training/training_dataset5/outputs_DlTransmission.csv') # sed -i 's/,$//' outputs_DlTransmission.csv to remove last empty column
+input_df = pd.read_csv('~/maxi_model_training/training_dataset6/inputs_DlTransmission-trimmed-noheaderrows.csv')
+output_df = pd.read_csv('~/maxi_model_training/training_dataset6/outputs_DlTransmission-trimmed-noheaderrows.csv') # sed -i 's/,$//' outputs_DlTransmission.csv to remove last empty column
 # Define identifying and feature columns
 slot_cols = ["simulation", "frame", "subframe", "slot"]
-flow_cols = ["rnti", "resource_type", "priority", "delay_budget", 
-              "available_symbols", "queue_size", "mcs", "bandwidth"]
+flow_cols = ["rnti", "priority", "is_DC_GBR", "PFmetric", "delay_factor"]
+
+# "resource_type","available_symbols", "queue_size", "mcs", "potT", "avgT", "bandwidth"
 
 # *************************************************************************
 #********************* Remove duplicate data ******************************
@@ -43,7 +44,7 @@ for key, group in inp_groups:
 
     # Sort flows within a slot by RNTI to ensure deterministic ordering
     # (different orderings of the same flows should produce the same hash)
-    group_sorted = group.sort_values(by=["rnti", "resource_type"], kind="mergesort")
+    group_sorted = group.sort_values(by=["priority","rnti"], kind="mergesort")
 
     # Convert each flow’s features to a compact string: "rnti:resource_type:priority:..."
     flow_strs = group_sorted[flow_cols].astype(str).agg(":".join, axis=1).tolist()
@@ -104,8 +105,8 @@ inp_clean = input_df[keep_inp_mask].copy()
 out_clean = output_df[keep_out_mask].copy()
 
 # Define file paths for the cleaned datasets
-clean_input_path = "inputs_DlTransmission_no_duplicates.csv"
-clean_output_path = "outputs_DlTransmission_no_duplicates.csv"
+clean_input_path = "inputs_DlTransmission_no_duplicates_test.csv"
+clean_output_path = "outputs_DlTransmission_no_duplicates_test.csv"
 
 # Save the cleaned DataFrames to new CSV files
 inp_clean.to_csv(clean_input_path, index=False)
@@ -133,7 +134,7 @@ padded_rows = []
 
 for key, group in inp_clean.groupby(slot_cols):
     # Sort deterministically by resource_type and rnti
-    group_sorted = group.sort_values(by=["resource_type", "rnti"], kind="mergesort")
+    group_sorted = group.sort_values(by=["priority", "rnti"], kind="mergesort")
 
     # Count number of flows in this slot
     num_flows = len(group_sorted)
@@ -143,7 +144,7 @@ for key, group in inp_clean.groupby(slot_cols):
         assert (group_sorted["rnti"].iloc[num_flows:] == 0).all(), f"Padding error in slot {key}: non-zero rnti in padded rows"
         # Build padding rows with zeros (same columns as group_sorted)
         pad_rows = pd.concat(
-            [pd.DataFrame([[*key, 0, 0, 0, 0, 0, 0, 0]], columns=slot_cols + flow_cols)] * (MAX_FLOWS - num_flows),
+            [pd.DataFrame([[*key, 0, 0, 0, 0, 0]], columns=slot_cols + flow_cols)] * (MAX_FLOWS - num_flows),
             ignore_index=True
         )
         group_sorted = pd.concat([group_sorted, pad_rows], ignore_index=True)
@@ -168,7 +169,7 @@ padded_input_df.to_csv(padded_input, index=False)
 # ********* Apply z-score normalization to the relevant columns**********
 # ***********************************************************************
 padded_input_df = pd.read_csv('inputs_DlTransmission_padded.csv')
-cols_to_zscore = ["priority", "delay_budget", "available_symbols", "queue_size", "mcs", "bandwidth"]
+cols_to_zscore = ["priority", "PFmetric", "delay_factor"]
 
 # Mask: exclude padded rows (rnti == 0)
 mask = padded_input_df["rnti"] != 0
@@ -195,74 +196,124 @@ torch.save({'mean': mean_tensor, 'std': std_tensor, "cols": cols_to_zscore}, 'no
 padded_input_df.to_csv('inputs_DlTransmission_zscore.csv', index=False)
 
 
-# ************** Split data into training, validation, and test sets ****************
-input_df = pd.read_csv('inputs_DlTransmission_zscore.csv')
-output_df = pd.read_csv('outputs_DlTransmission_no_duplicates.csv')
+# # ************** Split data into training, validation, and test sets ****************
+# input_df = pd.read_csv('inputs_DlTransmission_zscore.csv')
+# output_df = pd.read_csv('outputs_DlTransmission_no_duplicates.csv')
 
-# Unique simulations
-all_sims_input = sorted(input_df['simulation'].unique())
-all_sims_output = sorted(output_df['simulation'].unique())
-assert len(all_sims_input) == 72
-assert len(all_sims_output) == 72
-assert all_sims_input == all_sims_output
+# # Unique simulations
+# all_sims_input = sorted(input_df['simulation'].unique())
+# all_sims_output = sorted(output_df['simulation'].unique())
+# assert len(all_sims_input) == 72
+# assert len(all_sims_output) == 72
+# assert all_sims_input == all_sims_output
 
-groups = {
-    "3flows": list(range(0, 18)),
-    "4flows": list(range(18, 36)),
-    "5flows_A": list(range(36, 54)),
-    "5flows_B": list(range(54, 72)),
-}
+# groups = {
+#     "3flows": list(range(0, 18)),
+#     "4flows": list(range(18, 36)),
+#     "5flows_A": list(range(36, 54)),
+#     "5flows_B": list(range(54, 72)),
+# }
 
-rng = np.random.default_rng(seed=42)
+# rng = np.random.default_rng(seed=42)
 
-train_sims = []
-val_sims = []
-test_sims = []
+# train_sims = []
+# val_sims = []
+# test_sims = []
 
-for name, sims in groups.items():
-    sims = np.array(sims)
-    rng.shuffle(sims)
+# for name, sims in groups.items():
+#     sims = np.array(sims)
+#     rng.shuffle(sims)
 
-    n = len(sims)
-    n_train = int(0.6 * n)
-    n_val = int(0.2 * n)
+#     n = len(sims)
+#     n_train = int(0.6 * n)
+#     n_val = int(0.2 * n)
 
-    train_sims.extend(sims[:n_train])
-    val_sims.extend(sims[n_train:n_train + n_val])
-    test_sims.extend(sims[n_train + n_val:])
+#     train_sims.extend(sims[:n_train])
+#     val_sims.extend(sims[n_train:n_train + n_val])
+#     test_sims.extend(sims[n_train + n_val:])
 
-train_input = input_df[input_df['simulation'].isin(train_sims)].copy()
-val_input = input_df[input_df['simulation'].isin(val_sims)].copy()
-test_input = input_df[input_df['simulation'].isin(test_sims)].copy()
+# train_input = input_df[input_df['simulation'].isin(train_sims)].copy()
+# val_input = input_df[input_df['simulation'].isin(val_sims)].copy()
+# test_input = input_df[input_df['simulation'].isin(test_sims)].copy()
 
-train_output = output_df[output_df['simulation'].isin(train_sims)].copy()
-val_output = output_df[output_df['simulation'].isin(val_sims)].copy()
-test_output = output_df[output_df['simulation'].isin(test_sims)].copy()
+# train_output = output_df[output_df['simulation'].isin(train_sims)].copy()
+# val_output = output_df[output_df['simulation'].isin(val_sims)].copy()
+# test_output = output_df[output_df['simulation'].isin(test_sims)].copy()
 
-train_input.to_csv('inputs_DlTransmission_train.csv', index=False)
-val_input.to_csv('inputs_DlTransmission_val.csv', index=False)
-test_input.to_csv('inputs_DlTransmission_test.csv', index=False)
+# train_input.to_csv('inputs_DlTransmission_train.csv', index=False)
+# val_input.to_csv('inputs_DlTransmission_val.csv', index=False)
+# test_input.to_csv('inputs_DlTransmission_test.csv', index=False)
 
-train_output.to_csv('outputs_DlTransmission_train.csv', index=False)
-val_output.to_csv('outputs_DlTransmission_val.csv', index=False)
-test_output.to_csv('outputs_DlTransmission_test.csv', index=False)
+# train_output.to_csv('outputs_DlTransmission_train.csv', index=False)
+# val_output.to_csv('outputs_DlTransmission_val.csv', index=False)
+# test_output.to_csv('outputs_DlTransmission_test.csv', index=False)
 
-assert set(train_sims).isdisjoint(set(val_sims))
-assert set(train_sims).isdisjoint(set(test_sims))
-assert set(val_sims).isdisjoint(set(test_sims))
+# assert set(train_sims).isdisjoint(set(val_sims))
+# assert set(train_sims).isdisjoint(set(test_sims))
+# assert set(val_sims).isdisjoint(set(test_sims))
 
-def count_group(sims, start, end):
-    return sum(start <= s < end for s in sims)
+# def count_group(sims, start, end):
+#     return sum(start <= s < end for s in sims)
 
-for name, (a, b) in zip(
-    ["3flows", "4flows", "5A", "5B"],
-    [(0,18), (18,36), (36,54), (54,72)]
-):
-    print(name,
-          count_group(train_sims, a, b),
-          count_group(val_sims, a, b),
-          count_group(test_sims, a, b))
+# for name, (a, b) in zip(
+#     ["3flows", "4flows", "5A", "5B"],
+#     [(0,18), (18,36), (36,54), (54,72)]
+# ):
+#     print(name,
+#           count_group(train_sims, a, b),
+#           count_group(val_sims, a, b),
+#           count_group(test_sims, a, b))
     
-assert set(train_input[slot_cols].apply(tuple, axis=1)) == \
-       set(train_output[slot_cols].apply(tuple, axis=1))
-# -------------------------------------------------------------------------
+# assert set(train_input[slot_cols].apply(tuple, axis=1)) == \
+#        set(train_output[slot_cols].apply(tuple, axis=1))
+# # -------------------------------------------------------------------------
+
+# df_in = pd.read_csv("/home/maximilianrosca/Downloads/inputs_DlTransmission-trimmed-noheaderrows.csv")
+# df_out = pd.read_csv("/home/maximilianrosca/Downloads/outputs_DlTransmission-trimmed-noheaderrows.csv")
+
+# key_cols = ["simulation", "frame", "subframe", "slot"]
+
+# keys_in = set(map(tuple, df_in[key_cols].drop_duplicates().values))
+# keys_out = set(map(tuple, df_out[key_cols].drop_duplicates().values))
+
+# only_in_input = keys_in - keys_out
+# only_in_output = keys_out - keys_in
+
+# print(f"Keys only in input: {len(only_in_input)}")
+# print(f"Keys only in output: {len(only_in_output)}")
+
+# missing_simulations = sorted(k[0] for k in only_in_output)
+
+# print("Simulations present in OUTPUT but missing in INPUT:")
+# print(missing_simulations)
+
+# keep_cols = [
+#     "simulation",
+#     "frame",
+#     "subframe",
+#     "slot",
+#     "rnti",
+#     "priority",
+#     "is_DC_GBR",
+#     "PFmetric",
+#     "delay_factor",
+# ]
+
+# df_trimmed = df_in[keep_cols]
+
+# # Save to a new file
+# df_trimmed.to_csv(
+#     "/home/maximilianrosca/Downloads/inputs_DlTransmission-trimmed.csv",
+#     index=False
+# )
+
+# df = pd.read_csv("/home/maximilianrosca/Downloads/outputs_DlTransmission.csv")
+
+# # Drop first 3 rows
+# df_cut = df.iloc[1:].reset_index(drop=True)
+
+# # Save to new file (or overwrite if you want)
+# df_cut.to_csv(
+#     "outputs_DlTransmission-trimmed-noheaderrows.csv",
+#     index=False
+# )
