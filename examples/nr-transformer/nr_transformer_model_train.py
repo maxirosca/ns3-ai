@@ -16,7 +16,7 @@ import numpy as np
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 print(f"Using {device} device")
 
-log_file_training_validation = '.csv'
+log_file_training_validation = 'training_validation_log_file.csv'
 try:
     with open(log_file_training_validation, 'x', newline="") as f:
         writer = csv.writer(f)
@@ -37,7 +37,7 @@ else:
     trained_configs = set()
     print("No privrous training logs found")
 
-log_file_test = '.csv'
+log_file_test = 'test_log_file.csv'
 try:
     with open(log_file_test, 'x', newline="") as f:
         writer = csv.writer(f)
@@ -56,17 +56,21 @@ except FileExistsError:
 #         *[f"y_pred_{i}" for i in range(12)]
 #     ])
 
-train_input = pd.read_csv('~/maxi_model_training/training_dataset5/inputs_DlTransmission_train.csv')
-val_input = pd.read_csv('~/maxi_model_training/training_dataset5/inputs_DlTransmission_val.csv')
-test_input = pd.read_csv('~/maxi_model_training/training_dataset5/inputs_DlTransmission_test.csv')
+# train_input = pd.read_csv('inputs_DlTransmission_train.csv')
+# val_input = pd.read_csv('inputs_DlTransmission_val.csv')
+# test_input = pd.read_csv('inputs_DlTransmission_test.csv')
 
-train_output = pd.read_csv('~/maxi_model_training/training_dataset5/outputs_DlTransmission_train.csv')
-val_output = pd.read_csv('~/maxi_model_training/training_dataset5/outputs_DlTransmission_val.csv')
-test_output = pd.read_csv('~/maxi_model_training/training_dataset5/outputs_DlTransmission_test.csv')
+# train_output = pd.read_csv('outputs_DlTransmission_train.csv')
+# val_output = pd.read_csv('outputs_DlTransmission_val.csv')
+# test_output = pd.read_csv('outputs_DlTransmission_test.csv')
 
-train_dataset = NrDataset(train_input, train_output)
-val_dataset = NrDataset(val_input, val_output)
-test_dataset = NrDataset(test_input, test_output)
+# train_dataset = NrDataset(train_input, train_output)
+# val_dataset = NrDataset(val_input, val_output)
+# test_dataset = NrDataset(test_input, test_output)
+
+csv_input_file = 'inputs_DlTransmission_zscore.csv'
+csv_output_file = 'outputs_DlTransmission_no_duplicates.csv'
+dataset = NrDataset(csv_input_file, csv_output_file)
 
 # # --------------------------------------------------------------------------------->
 # # ---------------------------------- Split dataset in 3 sets ---------------------->
@@ -97,11 +101,11 @@ test_dataset = NrDataset(test_input, test_output)
 # # --------------------------------------------------------------------------------->
 
 hyperparameters_grid = {
-    "lr": [1e-5],
-    "d_model": [16],
-    "nhead": [1, 2],
-    "num_layers": [1, 2, 3, 4, 5, 6],
-    "batch_size": [16, 32, 64]
+    "lr": [1e-3],
+    "d_model": [32],
+    "nhead": [2],
+    "num_layers": [2],
+    "batch_size": [32]
 }
 
 def generate_combinations(grid):
@@ -109,6 +113,15 @@ def generate_combinations(grid):
     values = list(grid.values())
     for combination in product(*values):
         yield dict(zip(keys, combination))
+
+num_samples = len(dataset)
+indices = list(range(num_samples))
+train_idx, temp_idx = train_test_split(indices, test_size=0.4, random_state=42, shuffle=True)
+val_idx, test_idx = train_test_split(temp_idx, test_size=0.5, random_state=42, shuffle=True)
+
+train_dataset = Subset(dataset, train_idx)
+val_dataset = Subset(dataset, val_idx)
+test_dataset = Subset(dataset, test_idx)
 
 def run_training(hparams):
     train_loader = DataLoader(train_dataset, batch_size=hparams["batch_size"], shuffle=True)
@@ -157,7 +170,7 @@ def run_training(hparams):
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0
-            torch.save(model.state_dict(), model_path)
+            torch.save(model.state_dict(), model_name)
             print("New best model saved!")
         else:
             patience_counter += 1
@@ -167,7 +180,7 @@ def run_training(hparams):
     
     # Model testing
     print("Testing the best model on the test set!")
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_name))
     test_loss, test_acc_symbol, test_acc_slot = test(test_loader, model, loss_fn)
     log_test(test_loss, test_acc_symbol, test_acc_slot, hparams)
     print("Testing completed!")

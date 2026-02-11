@@ -15,15 +15,15 @@ torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
 FLOW_NUMS = 5
-output_csv = "/home/maximilianrosca/ns-3-dev/scheduler_time_only_model_inference.csv"
+# output_csv = "/home/maximilianrosca/ns-3-dev/scheduler_time_only_model_inference.csv"
 
-# Create file + header once
-if not os.path.exists(output_csv):
-    with open(output_csv, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            "inference_time_ms"
-        ])
+# # Create file + header once
+# if not os.path.exists(output_csv):
+#     with open(output_csv, "w", newline="") as f:
+#         writer = csv.writer(f)
+#         writer.writerow([
+#             "inference_time_ms"
+#         ])
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--randomStream", type=int, required=True)
@@ -114,12 +114,12 @@ try:
         assert pad_mask.shape == (1, FLOW_NUMS)
         # print("Input tensor:", inputs)
         with torch.no_grad():
-            start_time = time.perf_counter()
+            # start_time = time.perf_counter()
 
             outputs = model(inputs, src_key_padding_mask=pad_mask)
 
-            end_time = time.perf_counter()
-            inference_time_ms = (end_time - start_time) * 1000
+            # end_time = time.perf_counter()
+            # inference_time_ms = (end_time - start_time) * 1000
 
             assert outputs.shape == (1, 12, 4)
             # print("Raw model output size: ", outputs.shape)
@@ -128,11 +128,11 @@ try:
             # print("Output size after argmax: ", outputs.shape)
             # print("Predicted symbols:", outputs)
 
-            with open(output_csv, "a", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow([
-                    f"{inference_time_ms:.4f}"
-                    ])
+            # with open(output_csv, "a", newline="") as f:
+            #     writer = csv.writer(f)
+            #     writer.writerow([
+            #         f"{inference_time_ms:.4f}"
+            #         ])
         
         out_vec = msgInterface.GetPy2CppVector()[0]
         out_vec.sym1 = int(outputs[0])
