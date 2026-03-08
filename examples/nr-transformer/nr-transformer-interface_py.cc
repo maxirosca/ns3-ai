@@ -15,12 +15,10 @@ PYBIND11_MODULE(nr_transformer_interface_py_vec, m)
     py::class_<FeaturesStruct>(m, "PyEnvStruct")
         .def(py::init<>())
         .def_readwrite("rnti", &FeaturesStruct::rnti)
-        .def_readwrite("resource_type", &FeaturesStruct::resource_type)
         .def_readwrite("priority", &FeaturesStruct::priority)
-        .def_readwrite("packetDelayBudget", &FeaturesStruct::packetDelayBudget)
-        .def_readwrite("queueSize", &FeaturesStruct::queueSize)
-        .def_readwrite("availableSymbols", &FeaturesStruct::availableSymbols)
-        .def_readwrite("mcs", &FeaturesStruct::mcs);
+        .def_readwrite("dcGbrFlag", &FeaturesStruct::dcGbrFlag)
+        .def_readwrite("pfMetric", &FeaturesStruct::pfMetric)
+        .def_readwrite("delayFactor", &FeaturesStruct::delayFactor);
 
     py::class_<ActStruct>(m, "PyActStruct")
         .def(py::init<>())

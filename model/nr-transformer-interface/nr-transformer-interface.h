@@ -9,12 +9,10 @@ using namespace ns3;
 struct FeaturesStruct
 {
     uint8_t rnti; 
-    uint8_t resource_type;
-    uint16_t priority; 
-    uint16_t packetDelayBudget;
-    uint16_t queueSize;
-    uint16_t availableSymbols;
-    uint8_t mcs;
+    uint16_t priority;
+    uint16_t dcGbrFlag;
+    double pfMetric;
+    double delayFactor;
 };
 
 struct EnvStruct

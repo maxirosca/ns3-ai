@@ -34,12 +34,10 @@ NrTransformerInterface::SetFeatures(std::vector<FeaturesStruct>& features)
     for (int j = 0; j < MAX_NUM_FLOWS; ++j)
     {
         msgInterface->GetCpp2PyVector()->at(j).rnti =features[j].rnti;
-        msgInterface->GetCpp2PyVector()->at(j).resource_type = features[j].resource_type;
         msgInterface->GetCpp2PyVector()->at(j).priority = features[j].priority;
-        msgInterface->GetCpp2PyVector()->at(j).packetDelayBudget = features[j].packetDelayBudget;
-        msgInterface->GetCpp2PyVector()->at(j).queueSize = features[j].queueSize;
-        msgInterface->GetCpp2PyVector()->at(j).availableSymbols = features[j].availableSymbols;
-        msgInterface->GetCpp2PyVector()->at(j).mcs = features[j].mcs;
+        msgInterface->GetCpp2PyVector()->at(j).dcGbrFlag = features[j].dcGbrFlag;
+        msgInterface->GetCpp2PyVector()->at(j).pfMetric = features[j].pfMetric;
+        msgInterface->GetCpp2PyVector()->at(j).delayFactor = features[j].delayFactor;
     }
     msgInterface->CppSendEnd();
 }
