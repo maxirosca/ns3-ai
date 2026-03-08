@@ -42,8 +42,6 @@ class NrTransformerModel(nn.Module):
         return x
     
 class NrDataset(Dataset):
-    # def __init__(self, input_data: pd.DataFrame, output_data: pd.DataFrame):
-    #     super().__init__()
     def __init__(self, csv_input_file, csv_output_file):
         self.input_data = pd.read_csv(csv_input_file)
         self.output_data = pd.read_csv(csv_output_file)
@@ -88,29 +86,15 @@ class NrDataset(Dataset):
         self.features = torch.tensor(np.stack(self.raw_features), dtype=torch.float32) # torch.size([5, 7])
         self.labels = torch.tensor(np.stack(self.raw_labels), dtype=torch.float32)  # torch.size([12])
 
-        # Ensure deterministic ordering
-        # input_data = input_data.sort_values(slot_cols).reset_index(drop=True)
-        # output_data = output_data.sort_values(slot_cols).reset_index(drop=True)
-
-        # # Sanity check
-        # assert len(input_data) % 5 == 0, "Input data rows not multiple of 5"
-        # assert len(output_data) * 5 == len(input_data), "Output data rows not matching input data rows"
-
-        # # Build tensors
-        # X = input_data[features_cols].values.astype(np.float32)
-        # Y = output_data[out_sym_cols].values.astype(np.int64)
-
-        # # Reshape
-        # self.features = torch.from_numpy(X).view(-1, 5, len(features_cols))
-        # self.labels = torch.from_numpy(Y)
-
-        # print(f"Loaded {len(self.features)} samples | "
-        #       f"X shape: {self.features.shape}, Y shape: {self.labels.shape}"
-              # )
         
     def __len__(self):
         return len(self.features)
-        # return self.features.size(0)
 
     def __getitem__(self, idx):
         return self.features[idx], self.labels[idx]
+
+# model = NrTransformerModel(d_model=32, nhead=8, num_layers=1, num_ues=3)
+# pytorch_total_params = sum(p.numel() for p in model.parameters())  
+# print(f"Total parameters: {pytorch_total_params}")
+# for name, param in model.named_parameters():
+#     print(f"{name:40s} {param.numel():6d}")
