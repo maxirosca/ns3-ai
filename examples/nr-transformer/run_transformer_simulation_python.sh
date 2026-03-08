@@ -1,16 +1,19 @@
 #!/bin/bash
 
-# scenarios=("RMa" "UMa")
-randomStream=1
+scenarios=("UMa")
+bandwidths=(50000000)
+randomStream=4
 
-for i in $(seq 1 10); do
-    # for scenario in "${scenarios[@]}"; do
-      # echo "Running with randomStream=$randomStream, scenario=$scenario"
-    echo "Running with randomStream=$randomStream"
-    python nr_transformer_model_inference.py \
-      --randomStream=$randomStream \
-        # --scenario=$scenario
+
+for scenario in "${scenarios[@]}"; do
+  for bandwidth in "${bandwidths[@]}"; do
+    echo "Running with randomStream=$randomStream, scenario=$scenario, bandwidth=$bandwidth"
+    python nr_baseline_model_inference.py \
+    --randomStream=$randomStream \
+    --scenario=$scenario \
+    --enableTransformer=True \
+    --bandwidth=$bandwidth
     sleep 1
     ((randomStream++))
-    # done
+  done
 done
