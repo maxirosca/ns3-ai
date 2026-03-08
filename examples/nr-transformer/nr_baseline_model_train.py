@@ -17,7 +17,7 @@ from nr_baseline_model import NrBaselineModel
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 print(f"Using {device} device")
 
-log_file_training_validation = 'training_validation_log_file_gridsearch_baselinemodel.csv'
+log_file_training_validation = 'training_validation_log_file_baselinemodel.csv'
 try:
     with open(log_file_training_validation, 'x', newline="") as f:
         writer = csv.writer(f)
@@ -35,9 +35,9 @@ if os.path.exists(log_file_training_validation):
     print(f"Loaded {len(trained_configs)} trained configurations")
 else:
     trained_configs = set()
-    print("No privrous training logs found")
+    print("No previous training logs found")
 
-log_file_test = 'test_log_file_gridsearch_baselinemodel.csv'
+log_file_test = 'test_log_file_baselinemodel.csv'
 try:
     with open(log_file_test, 'x', newline="") as f:
         writer = csv.writer(f)
@@ -47,13 +47,13 @@ try:
 except FileExistsError:
     pass  # File already exists
 
-csv_input_file = '~/maxi_model_training/training_dataset4.1/inputs_DlTransmission_zscore.csv'
-csv_output_file = '~/maxi_model_training/training_dataset4.1/outputs_DlTransmission_no_duplicates.csv'
+csv_input_file = 'inputs_DlTransmission_zscore.csv'
+csv_output_file = 'outputs_DlTransmission_no_duplicates.csv'
 dataset = NrDataset(csv_input_file, csv_output_file)
 
 hyperparameters_grid = {
-    "lr": [1e-5],
-    "batch_size": [16, 32, 64]
+    "lr": [1e-4],
+    "batch_size": [64]
 }
 
 def generate_combinations(grid):
@@ -79,7 +79,7 @@ def run_training(hparams):
  
 
     # Initialize model, loss function, and optimizer
-    model = NrBaselineModel(input_size=35, hidden_dim=128, output_size=12, num_ues=3).to(device)
+    model = NrBaselineModel(input_size=25, hidden_dim=368, output_size=12, num_ues=3).to(device)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=hparams["lr"])
 

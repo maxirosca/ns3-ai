@@ -15,7 +15,7 @@ torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
 FLOW_NUMS = 5
-# output_csv = "/home/maximilianrosca/ns-3-dev/scheduler_time_only_model_inference.csv"
+# output_csv = ".csv"
 
 # # Create file + header once
 # if not os.path.exists(output_csv):
@@ -27,24 +27,24 @@ FLOW_NUMS = 5
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--randomStream", type=int, required=True)
-# parser.add_argument("--numerology", type=int, required=True)
-# parser.add_argument("--scenario", type=str, required=True)
-# parser.add_argument("--enableTransformer", type=bool, required=True)
+parser.add_argument("--bandwidth", type=int, required=True)
+parser.add_argument("--scenario", type=str, required=True)
+parser.add_argument("--enableTransformer", type=bool, required=True)
 args = parser.parse_args()
 
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 print(f"Using {device} device")
 
-model = NrBaselineModel(input_size=35, hidden_dim=240, output_size=12, num_ues=3)
-model.load_state_dict(torch.load('nr_baseline_model_best_lr1e-05_bs32_bigger.pth', map_location=torch.device('cpu'), weights_only=True))
+model = NrBaselineModel(input_size=25, hidden_dim=368, output_size=12, num_ues=3)
+model.load_state_dict(torch.load('nr_baseline_model_best_lr0.0001_bs64.pth', map_location=torch.device('cpu'), weights_only=True))
 model = model.to(device)
 model.eval()
 input_tensor = torch.tensor([
-    [1, 0, 1.89645732694928, -0.460449008821096, 0.224142628740084, -0.55675641025158, -0.213868534482615],
-    [2, 1, 0.564031082547522, 1.00345553164235, 0.224142628740084, -0.553541058970402, 0.177493585282969],
-    [2, 2, -1.10150172295467, -1.08260843851806, 0.224142628740084, 0.285191361102902, 0.177493585282969],
-    [0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0]
+    [ 2.0000, -1.2684,  0.0000, -0.0082, -0.4588],
+    [ 1.0000, -0.1782,  0.0000, -0.0082, -0.4588],
+    [ 2.0000, -0.1782,  0.0000, -0.0082, -0.4588],
+    [ 2.0000,  1.1844,  1.0000, -0.0082,  2.2508],
+    [ 3.0000,  1.1844,  1.0000, -0.0082,  2.2508]
 ], dtype=torch.float32).unsqueeze(0).to(device)
 
 # with torch.no_grad():
@@ -59,12 +59,12 @@ norm_params = torch.load("normalization_params.pt", map_location=torch.device('c
 mean = norm_params["mean"].to(device)
 std = norm_params["std"].to(device)
 
-assert mean.shape == (5,)
-assert std.shape == (5,)
+assert mean.shape == (3,)
+assert std.shape == (3,)
 
-inputs = torch.zeros(1, FLOW_NUMS, 7, dtype=torch.float32, device=device)
+inputs = torch.zeros(1, FLOW_NUMS, 5, dtype=torch.float32, device=device)
 inputs_flat = inputs.view(1, -1)
-inputs_raw = torch.zeros(1, FLOW_NUMS, 7, dtype=torch.float32, device=device)
+inputs_raw = torch.zeros(1, FLOW_NUMS, 5, dtype=torch.float32, device=device)
 
 gc.disable()
 
@@ -72,10 +72,10 @@ print("Starting nr_transformer_use_model.py...")
 exp = Experiment("nr_transformer_demo", "../../../../", py_binding,
                 handleFinish=True, useVector=True, vectorSize=FLOW_NUMS)
 setting_map = {
-    # "enableTransformer": args.enableTransformer,
+    "enableTransformer": args.enableTransformer,
     "randomStream": args.randomStream,
-    # "numerology": args.numerology,
-    # "scenario": args.scenario
+    "bandwidth": args.bandwidth,
+    "scenario": args.scenario
     }
 msgInterface = exp.run(setting_map, show_output=True)
 # msgInterface = exp.run(show_output=True)
@@ -83,27 +83,25 @@ print("Experiment started...")
 
 try:
     while True:
-        # receive from C++ side
         msgInterface.PyRecvBegin()
         if msgInterface.PyGetFinished():
             break
 
-        # send to C++ side
         msgInterface.PySendBegin()
         cpp_vec = msgInterface.GetCpp2PyVector()
         for i in range(FLOW_NUMS):
             v = cpp_vec[i]
             inputs_raw[0, i, 0] = v.rnti
-            inputs_raw[0, i, 1] = v.resource_type
-            inputs_raw[0, i, 2] = v.priority
-            inputs_raw[0, i, 3] = v.packetDelayBudget
-            inputs_raw[0, i, 4] = v.availableSymbols
-            inputs_raw[0, i, 5] = v.queueSize
-            inputs_raw[0, i, 6] = v.mcs
+            inputs_raw[0, i, 1] = v.priority
+            inputs_raw[0, i, 2] = v.dcGbrFlag
+            inputs_raw[0, i, 3] = v.pfMetric
+            inputs_raw[0, i, 4] = v.delayFactor
         mask = inputs_raw[0, :, 0] != 0
         inputs.copy_(inputs_raw)
-        inputs[0, mask, 2:] = (inputs[0, mask, 2:] - mean) / std
-        assert inputs_raw.shape == (1, FLOW_NUMS, 7)
+        inputs[0, mask, 1] = (inputs[0, mask, 1] - mean[0]) / std[0]
+        inputs[0, mask, 3] = (inputs[0, mask, 3] - mean[1]) / std[1]
+        inputs[0, mask, 4] = (inputs[0, mask, 4] - mean[2]) / std[2]
+        assert inputs_raw.shape == (1, FLOW_NUMS, 5)
         # print("Input tensor:", inputs)
 
         with torch.no_grad():

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class NrBaselineModel(nn.Module):
-    def __init__(self, input_size=35, hidden_dim=128, output_size=12, num_ues=3):
+    def __init__(self, input_size=25, hidden_dim=368, output_size=12, num_ues=3):
         super().__init__()
         self.num_ues = num_ues + 1 # including rnti == 0
         self.output_size = output_size
@@ -26,7 +26,7 @@ class NrBaselineModel(nn.Module):
         out = out.view(-1, self.output_size, self.num_ues)
         return out
 
-# model = NrBaselineModel(input_size=35, hidden_dim=240, output_size=12, num_ues=3)
+# model = NrBaselineModel(input_size=25, hidden_dim=368, output_size=12, num_ues=3)
 # pytorch_total_params = sum(p.numel() for p in model.parameters())  
 # print(f"Total parameters: {pytorch_total_params}")
 # for name, param in model.named_parameters():
